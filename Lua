@@ -1,7 +1,7 @@
 if game.PlaceId == 4225025295 then
     local rf = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
     local win = rf:CreateWindow({
-        Name = "Money Hub ",
+        Name = "Money Hub",
         Icon = 0,
         LoadingTitle = "Loading Best op Ninja Simulator Script",
         LoadingSubtitle = "by Money",
@@ -10,7 +10,7 @@ if game.PlaceId == 4225025295 then
         DisableBuildWarnings = false,
         ConfigurationSaving = {
             Enabled = true,
-            FolderName = "Luau", -- must be a string
+            FolderName = "Luau",
             FileName = "Big Bro"
         },
         Discord = {
@@ -31,60 +31,98 @@ if game.PlaceId == 4225025295 then
     })
 
     local Tab = win:CreateTab("Farm", 4483362458)
-    local lp = game:GetService("Players").LocalPlayer
+    local rs = game:GetService("RunService")
+    local Players = game:GetService("Players")
+    local lp = Players.LocalPlayer
     local ws = workspace
+    local ts = game:GetService("TweenService")
 
     -------------------------------
-    -- Auto Swing (Optimized)
+    -- Auto Swing (Very Fast)
     -------------------------------
-    local autoActive = false
+    local swingCon
     local AutoSwingToggle = Tab:CreateToggle({
         Name = "Auto Swing",
         CurrentValue = false,
         Flag = "Toggle_AutoSwing",
-        Callback = function(en)
+        Callback = function(enabled)
             local char = lp.Character
             if not char then return end
-            autoActive = en
-            if en then
-                -- Use a coroutine loop with a very short delay
-                coroutine.wrap(function()
-                    while autoActive do
-                        local tool = char:FindFirstChildWhichIsA("Tool")
-                        if tool then
-                            pcall(function() tool:Activate() end)
-                        end
-                        task.wait(0.03)
+            if enabled then
+                swingCon = rs.Heartbeat:Connect(function()
+                    local tool = char:FindFirstChildWhichIsA("Tool")
+                    if tool then
+                        pcall(function() tool:Activate()  tool.Enabled = true  end)
                     end
-                end)()
+                end)
+            else
+                if swingCon then
+                    swingCon:Disconnect()
+                    swingCon = nil
+                end
             end
         end,
     })
 
     -------------------------------
-    -- Disable Rendering Toggle
+    -- Safe Zone + Lag Reduce
     -------------------------------
-    local orig = {}  -- store original LocalTransparencyModifier for each part
-    local DisableRenderingToggle = Tab:CreateToggle({
-        Name = "Disable Rendering",
+    local safeZoneActive = false
+    local safeOldPos
+    local safePart
+    local orig = {}  -- table to store each part's original transparency
+    local SafeZoneToggle = Tab:CreateToggle({
+        Name = "Safe Zone + Lag Reduce",
         CurrentValue = false,
-        Flag = "Toggle_DisableRendering",
-        Callback = function(en)
-            if en then
+        Flag = "Toggle_SafeZone",
+        Callback = function(enabled)
+            if enabled then
+                local char = lp.Character
+                if not char then return end
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                safeOldPos = hrp.CFrame
+                -- Create a safe zone platform (block sized)
+                safePart = Instance.new("Part")
+                safePart.Name = "Safe Zone + Lag Reduce"
+                safePart.Size = Vector3.new(10, 1, 10)
+                safePart.Anchored = true
+                safePart.CanCollide = true
+                safePart.Position = Vector3.new(hrp.Position.X, 1000, hrp.Position.Z)
+                safePart.Parent = ws
+                hrp.CFrame = safePart.CFrame + Vector3.new(0, 3, 0)
+                -- Disable rendering for lag reduction
                 for _,obj in pairs(ws:GetDescendants()) do
                     if obj:IsA("BasePart") then
-                        orig[obj] = obj.LocalTransparencyModifier
+                        if not orig[obj] then orig[obj] = obj.LocalTransparencyModifier end
                         obj.LocalTransparencyModifier = 1
                     end
                 end
+                safeZoneActive = true
             else
-                for _,obj in pairs(ws:GetDescendants()) do
-                    if obj:IsA("BasePart") and orig[obj] ~= nil then
-                        obj.LocalTransparencyModifier = orig[obj]
-                        orig[obj] = nil
+                if safeZoneActive then
+                    local char = lp.Character
+                    if char then
+                        local hrp = char:FindFirstChild("HumanoidRootPart")
+                        if hrp and safeOldPos then
+                            hrp.CFrame = safeOldPos
+                        end
                     end
+                    if safePart then
+                        safePart:Destroy()
+                        safePart = nil
+                    end
+                    for _,obj in pairs(ws:GetDescendants()) do
+                        if obj:IsA("BasePart") and orig[obj] then
+                            obj.LocalTransparencyModifier = orig[obj]
+                            orig[obj] = nil
+                        end
+                    end
+                    safeZoneActive = false
                 end
             end
         end,
     })
+
+    win:LoadConfiguration()
 end
