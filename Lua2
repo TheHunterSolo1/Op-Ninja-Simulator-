@@ -6,10 +6,16 @@ local lp = Players.LocalPlayer
 local ws = workspace
 
 -- Connection variables & flags
-local con, con2, con3, con4, con5, autoGunLoop, coinReachConn
+local coinReachConn
 local tweenActive = false
 local autoGunBusy = false
 local coinOrig = {}
+
+-- ESP toggle flags
+local innocentActive = false
+local sheriffActive = false
+local murdererActive = false
+local gunESPActive = false
 
 local Window = Rayfield:CreateWindow({
     Name = "Money Hub (0.1)",
@@ -46,19 +52,19 @@ local Auto = Window:CreateTab("Auto", 4483362458)
 local Section = Auto:CreateSection("Auto")
 
 Rayfield:Notify({
-    Title = "When Esp Shows all Innocent disable them all and enable them again",
+    Title = "When ESP Shows all Innocent disable them all and enable them again",
     Content = "Your Great",
     Duration = 6.5,
     Image = nil,
 })
 
--- Helper functions for Billboard Gui
+-- Helper functions for Billboard Gui (TextLabel now smaller)
 local function addBill(plr)
     if plr.Character and plr.Character:FindFirstChild("Head") and not plr.Character:FindFirstChild("NameBillboard") then
         local bb = Instance.new("BillboardGui")
         bb.Name = "NameBillboard"
         bb.Adornee = plr.Character.Head
-        bb.Size = UDim2.new(0,100,0,50)
+        bb.Size = UDim2.new(0,70,0,30)  -- smaller size
         bb.StudsOffset = Vector3.new(0,3,0)
         bb.AlwaysOnTop = true
         local tl = Instance.new("TextLabel", bb)
@@ -79,115 +85,167 @@ local function remBill(plr)
     end
 end
 
--- Innocent ESP (Green)
+local function removeESPHighlights()
+    for _,p in pairs(Players:GetPlayers()) do
+        if p.Character then
+            local h = p.Character:FindFirstChild("Highlight")
+            if h then h:Destroy() end
+            remBill(p)
+        end
+    end
+end
+
+-- Innocent ESP Update (Green)
+local function updateInnocentESP()
+    while innocentActive do
+        for _,p in pairs(Players:GetPlayers()) do
+            if p ~= lp and p.Character then
+                local hasTool = p.Character:FindFirstChild("Gun") or p.Character:FindFirstChild("Knife") or 
+                    (p.Backpack and (p.Backpack:FindFirstChild("Gun") or p.Backpack:FindFirstChild("Knife")))
+                if not hasTool then
+                    if not p.Character:FindFirstChild("Highlight") then
+                        local h = Instance.new("Highlight", p.Character)
+                        h.Enabled = true
+                        h.FillColor = Color3.new(0,1,0)
+                    end
+                    addBill(p)
+                else
+                    if p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
+                    remBill(p)
+                end
+            end
+        end
+        task.wait(0.2)
+    end
+end
+
+-- Sheriff ESP Update (Blue)
+local function updateSheriffESP()
+    while sheriffActive do
+        for _,p in pairs(Players:GetPlayers()) do
+            if p ~= lp and p.Character then
+                local hasGun = p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))
+                if hasGun then
+                    if not p.Character:FindFirstChild("Highlight") then
+                        local h = Instance.new("Highlight", p.Character)
+                        h.Enabled = true
+                        h.FillColor = Color3.new(0,0,1)
+                    end
+                    addBill(p)
+                else
+                    if p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
+                    remBill(p)
+                end
+            end
+        end
+        task.wait(0.2)
+    end
+end
+
+-- Murderer ESP Update (Red)
+local function updateMurdererESP()
+    while murdererActive do
+        for _,p in pairs(Players:GetPlayers()) do
+            if p ~= lp and p.Character then
+                local hasKnife = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
+                if hasKnife then
+                    if not p.Character:FindFirstChild("Highlight") then
+                        local h = Instance.new("Highlight", p.Character)
+                        h.Enabled = true
+                        h.FillColor = Color3.new(1,0,0)
+                    end
+                    addBill(p)
+                else
+                    if p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
+                    remBill(p)
+                end
+            end
+        end
+        task.wait(0.2)
+    end
+end
+
+-- Gun ESP for GunDrops (update every 0.2 sec)
+local function updateGunESP()
+    while gunESPActive do
+        for _,v in pairs(ws:GetDescendants()) do
+            if v.Name == "GunDrop" and v:IsA("BasePart") then
+                if not v:FindFirstChild("Highlight") then
+                    local h = Instance.new("Highlight", v)
+                    h.FillColor = Color3.new(0,0,1)
+                    h.Enabled = true
+                end
+            end
+        end
+        task.wait(0.2)
+    end
+end
+
+-- Toggle: InnocentESP
 local Toggle = Tab:CreateToggle({
     Name = "InnocentESP",
     CurrentValue = false,
     Flag = "Toggle1",
     Callback = function(val)
+        innocentActive = val
         if val then
-            con = rs.Heartbeat:Connect(function()
-                for _,p in pairs(Players:GetPlayers()) do
-                    if p~=lp and p.Character then
-                        local hasTool = p.Character:FindFirstChild("Gun") or p.Character:FindFirstChild("Knife") or (p.Backpack and (p.Backpack:FindFirstChild("Gun") or p.Backpack:FindFirstChild("Knife")))
-                        if not hasTool then
-                            if not p.Character:FindFirstChild("Highlight") then
-                                local h = Instance.new("Highlight", p.Character)
-                                h.Enabled = true
-                                h.FillColor = Color3.new(0,1,0)
-                            end
-                            addBill(p)
-                        end
-                    end
-                end
-            end)
+            spawn(updateInnocentESP)
         else
-            if con then con:Disconnect() con = nil end
-            for _,p in pairs(Players:GetPlayers()) do
-                if p.Character then
-                    if p.Character:FindFirstChild("Highlight") then
-                        p.Character.Highlight:Destroy()
-                    end
-                    remBill(p)
-                end
-            end
+            removeESPHighlights()
         end
     end,
 })
 
--- Sheriff ESP (Blue)
+-- Toggle: SheriffESP
 local Toggle2 = Tab:CreateToggle({
     Name = "SheriffESP",
     CurrentValue = false,
     Flag = "Toggle2",
     Callback = function(val)
+        sheriffActive = val
         if val then
-            con2 = rs.Heartbeat:Connect(function()
-                for _,p in pairs(Players:GetPlayers()) do
-                    if p~=lp and p.Character then
-                        local hasGun = p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))
-                        if hasGun then
-                            if not p.Character:FindFirstChild("Highlight") then
-                                local h = Instance.new("Highlight", p.Character)
-                                h.Enabled = true
-                                h.FillColor = Color3.new(0,0,1)
-                            end
-                            addBill(p)
-                        end
-                    end
-                end
-            end)
+            spawn(updateSheriffESP)
         else
-            if con2 then con2:Disconnect() con2 = nil end
-            for _,p in pairs(Players:GetPlayers()) do
-                if p.Character then
-                    if (p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))) and p.Character:FindFirstChild("Highlight") then
-                        p.Character.Highlight:Destroy()
-                    end
-                    remBill(p)
-                end
-            end
+            removeESPHighlights()
         end
     end,
 })
 
--- Murderer ESP (Red)
+-- Toggle: MurdererESP
 local Toggle3 = Tab:CreateToggle({
     Name = "MurdererESP",
     CurrentValue = false,
     Flag = "Toggle3",
     Callback = function(val)
+        murdererActive = val
         if val then
-            con3 = rs.Heartbeat:Connect(function()
-                for _,p in pairs(Players:GetPlayers()) do
-                    if p~=lp and p.Character then
-                        local hasKnife = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
-                        if hasKnife then
-                            if not p.Character:FindFirstChild("Highlight") then
-                                local h = Instance.new("Highlight", p.Character)
-                                h.Enabled = true
-                                h.FillColor = Color3.new(1,0,0)
-                            end
-                            addBill(p)
-                        end
-                    end
-                end
-            end)
+            spawn(updateMurdererESP)
         else
-            if con3 then con3:Disconnect() con3 = nil end
-            for _,p in pairs(Players:GetPlayers()) do
-                if p.Character then
-                    if (p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))) and p.Character:FindFirstChild("Highlight") then
-                        p.Character.Highlight:Destroy()
-                    end
-                    remBill(p)
+            removeESPHighlights()
+        end
+    end,
+})
+
+-- Toggle: GunESP for GunDrops
+local Toggle5 = Tab:CreateToggle({
+    Name = "GunESP",
+    CurrentValue = false,
+    Flag = "Toggle5",
+    Callback = function(val)
+        gunESPActive = val
+        if val then
+            spawn(updateGunESP)
+        else
+            for _,v in pairs(ws:GetDescendants()) do
+                if v.Name == "GunDrop" and v:IsA("BasePart") and v:FindFirstChild("Highlight") then
+                    v.Highlight:Destroy()
                 end
             end
         end
     end,
 })
 
--- Beta Auto Farm Coins using TweenService
+-- Beta Auto Farm Coins using TweenService (unchanged)
 local Toggle4 = Auto:CreateToggle({
     Name = "Beta Auto Farm Coins",
     CurrentValue = false,
@@ -200,8 +258,8 @@ local Toggle4 = Auto:CreateToggle({
             con4 = rs.Heartbeat:Connect(function()
                 local coin, dist = nil, math.huge
                 for _,v in pairs(ws:GetDescendants()) do
-                    if v.Name=="Coin_Server" and v:IsA("BasePart") then
-                        local d = (v.Position-hrp.Position).Magnitude
+                    if v.Name == "Coin_Server" and v:IsA("BasePart") then
+                        local d = (v.Position - hrp.Position).Magnitude
                         if d < dist then
                             dist = d
                             coin = v
@@ -210,8 +268,8 @@ local Toggle4 = Auto:CreateToggle({
                 end
                 if coin and not tweenActive then
                     tweenActive = true
-                    local dur = dist/22
-                    local tw = ts:Create(hrp, TweenInfo.new(dur,Enum.EasingStyle.Linear), {CFrame = coin.CFrame})
+                    local dur = dist / 22
+                    local tw = ts:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = coin.CFrame})
                     tw:Play()
                     tw.Completed:Connect(function()
                         tweenActive = false
@@ -225,42 +283,13 @@ local Toggle4 = Auto:CreateToggle({
     end,
 })
 
--- Gun ESP for GunDrops
-local Toggle5 = Tab:CreateToggle({
-    Name = "GunESP",
-    CurrentValue = false,
-    Flag = "Toggle5",
-    Callback = function(val)
-        if val then
-            con5 = rs.Heartbeat:Connect(function()
-                for _,v in pairs(ws:GetDescendants()) do
-                    if v.Name=="GunDrop" and v:IsA("BasePart") then
-                        if not v:FindFirstChild("Highlight") then
-                            local h = Instance.new("Highlight", v)
-                            h.FillColor = Color3.new(0,0,1)
-                            h.Enabled = true
-                        end
-                    end
-                end
-            end)
-        else
-            if con5 then con5:Disconnect() end
-            for _,v in pairs(ws:GetDescendants()) do
-                if v.Name=="GunDrop" and v:FindFirstChild("Highlight") then
-                    v.Highlight:Destroy()
-                end
-            end
-        end
-    end,
-})
-
--- Chat Button: Send Murderer and Sheriff Names in Chat
+-- Chat Button: Send Murderer and Sheriff Names in Chat (unchanged)
 local ChatButton = Auto:CreateButton({
     Name = "Send Murderer and Sheriff In Chat",
     Callback = function()
         local mNames, sNames = {}, {}
         for _,p in pairs(Players:GetPlayers()) do
-            if p~=lp and p.Character then
+            if p ~= lp and p.Character then
                 local isM = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
                 local isS = p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))
                 if isM then
@@ -270,14 +299,14 @@ local ChatButton = Auto:CreateButton({
                 end
             end
         end
-        local mTxt = (#mNames>0) and table.concat(mNames, ", ") or "None"
-        local sTxt = (#sNames>0) and table.concat(sNames, ", ") or "None"
+        local mTxt = (#mNames > 0) and table.concat(mNames, ", ") or "None"
+        local sTxt = (#sNames > 0) and table.concat(sNames, ", ") or "None"
         local msg = "Murderer: " .. mTxt .. " | Sheriff: " .. sTxt
         game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
     end,
 })
 
--- Auto Get Gun toggle (using GunDrop)
+-- Auto Get Gun toggle (using GunDrop) (unchanged)
 local Toggle6 = Auto:CreateToggle({
     Name = "Auto Get Gun",
     CurrentValue = false,
@@ -290,7 +319,7 @@ local Toggle6 = Auto:CreateToggle({
                 if not hrp then return end
                 local gun
                 for _,v in pairs(ws:GetDescendants()) do
-                    if v.Name=="GunDrop" and v:IsA("BasePart") then
+                    if v.Name == "GunDrop" and v:IsA("BasePart") then
                         gun = v
                         break
                     end
@@ -299,7 +328,7 @@ local Toggle6 = Auto:CreateToggle({
                     autoGunBusy = true
                     local oldC = hrp.CFrame
                     local d = (hrp.Position - gun.Position).Magnitude
-                    local dur = d/22
+                    local dur = d / 22
                     local tw1 = ts:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = gun.CFrame})
                     tw1:Play()
                     tw1.Completed:Connect(function()
@@ -321,7 +350,7 @@ local Toggle6 = Auto:CreateToggle({
     end,
 })
 
--- Coins Reach toggle: Increase coin size to 4x (double twice)
+-- Coins Reach toggle: Increase coin size to 4x (and restore original size when off)
 local Toggle7 = Auto:CreateToggle({
     Name = "Coins Reach",
     CurrentValue = false,
@@ -329,20 +358,20 @@ local Toggle7 = Auto:CreateToggle({
     Callback = function(val)
         if val then
             for _,v in pairs(ws:GetDescendants()) do
-                if v.Name=="Coin_Server" and v:IsA("BasePart") then
+                if v.Name == "Coin_Server" and v:IsA("BasePart") then
                     if not coinOrig[v] then coinOrig[v] = v.Size end
                     v.Size = coinOrig[v] * 4
                 end
             end
             coinReachConn = ws.DescendantAdded:Connect(function(v)
-                if v.Name=="Coin_Server" and v:IsA("BasePart") then
+                if v.Name == "Coin_Server" and v:IsA("BasePart") then
                     if not coinOrig[v] then coinOrig[v] = v.Size end
                     v.Size = coinOrig[v] * 4
                 end
             end)
         else
             for _,v in pairs(ws:GetDescendants()) do
-                if v.Name=="Coin_Server" and v:IsA("BasePart") and coinOrig[v] then
+                if v.Name == "Coin_Server" and v:IsA("BasePart") and coinOrig[v] then
                     v.Size = coinOrig[v]
                     coinOrig[v] = nil
                 end
