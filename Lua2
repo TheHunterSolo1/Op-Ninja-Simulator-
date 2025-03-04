@@ -1,0 +1,223 @@
+--[[
+Money Hub (With Load Check)
+Improvements:
+• Added checks for successful load of `loadstring` and notifications accordingly.
+]]--
+
+-- Load Rayfield UI Library
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = workspace
+local LocalPlayer = Players.LocalPlayer
+
+-- Helper function: Ensure character is loaded
+local function ensureCharacterLoaded()
+    if not LocalPlayer.Character or not LocalPlayer.Character.Parent then
+        LocalPlayer.CharacterAdded:Wait()
+    end
+end
+
+-- Function to remove all Highlight instances from a character
+local function removeHighlights(character)
+    if character then
+        for _, child in ipairs(character:GetChildren()) do
+            if child:IsA("Highlight") then
+                child:Destroy()
+            end
+        end
+    end
+end
+
+-- Error logging helper
+local function logError(message)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Script Error",
+        Text = message,
+        Duration = 5
+    })
+    warn(message)
+end
+
+-- Setup UI Window
+local function setupWindow()
+    return Rayfield:CreateWindow({
+        Name = "Money Hub (0.1)",
+   Icon = 0, 
+   LoadingTitle = "Loading Best MM2 Script",
+   LoadingSubtitle = "by Money",
+   Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
+
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = Luau, -- Create a custom folder for your hub/game
+      FileName = "Big Bro"
+   },
+        Discord = {
+            Enabled = true,
+            Invite = "KvvHREvB",
+            RememberJoins = true
+        },
+        KeySystem = false,
+        KeySettings = {
+            Title = "Key System",
+            Subtitle = "Key System",
+            Note = "Key Is Hello",
+            FileName = "Key",
+            SaveKey = true,
+            GrabKeyFromSite = false,
+            Key = {"Hello"}
+        }
+    })
+end
+
+-- Create main window
+local Window = setupWindow()
+
+-- Create tabs: ESP and Auto
+local TabESP = Window:CreateTab("ESP", 4483362458)
+local TabAuto = Window:CreateTab("Auto", 4483362458)
+
+-- Game Name Check
+if game.PlaceId == 4225025295 then
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Game Loaded",
+        Text = "Game: Ninja Simulator (Loaded Successfully)",
+        Duration = 5
+    })
+    print("Loaded Ninja Simulator Script Successfully")
+else
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Game Not Supported",
+        Text = "This game is not supported by the script.",
+        Duration = 5
+    })
+    warn("This game is not supported by the script")
+    return
+end
+
+-------------------------
+-- ESP TOGGLES (Optimized)
+-------------------------
+
+-- Toggle function for ESP elements
+local function createESPToggle(name, color, flag, conditionCheck)
+    return TabESP:CreateToggle({
+        Name = name,
+        CurrentValue = false,
+        Flag = flag,
+        Callback = function(enabled)
+            if enabled then
+                RunService.Heartbeat:Connect(function()
+                    for _, player in ipairs(Players:GetPlayers()) do
+                        if player ~= LocalPlayer and player.Character then
+                            local character = player.Character
+                            if conditionCheck(player, character) then
+                                if not character:FindFirstChild("Highlight") then
+                                    local highlight = Instance.new("Highlight")
+                                    highlight.Parent = character
+                                    highlight.Enabled = true
+                                    highlight.FillColor = color
+                                end
+                            else
+                                removeHighlights(character)
+                            end
+                        end
+                    end
+                end)
+            else
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player.Character then
+                        removeHighlights(player.Character)
+                    end
+                end
+            end
+        end
+    })
+end
+
+-- Add ESP toggles for Innocent, Sheriff, Murderer, Gun
+createESPToggle("Innocent ESP", Color3.new(0, 1, 0), "Toggle_Innocent", function(player, character)
+    local hasWeapon = character:FindFirstChild("Gun") or character:FindFirstChild("Knife") or
+                      (player:FindFirstChild("Backpack") and (player.Backpack:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Knife")))
+    return not hasWeapon
+end)
+
+createESPToggle("Sheriff ESP", Color3.new(0, 0, 1), "Toggle_Sheriff", function(player, character)
+    return character:FindFirstChild("Gun") or (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Gun"))
+end)
+
+createESPToggle("Murderer ESP", Color3.new(1, 0, 0), "Toggle_Murderer", function(player, character)
+    return character:FindFirstChild("Knife") or (player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Knife"))
+end)
+
+createESPToggle("Gun ESP", Color3.new(0, 0, 1), "Toggle_Gun", function(_, character)
+    return character and character.Name == "GunDrop"
+end)
+
+-------------------------
+-- AUTO FARM COINS (Optimized)
+-------------------------
+
+local function autoFarmCoins(enabled)
+    local character = LocalPlayer.Character
+    if not character then
+        logError("Character not loaded!")
+        return
+    end
+    local humanoidRoot = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRoot then
+        logError("HumanoidRootPart not found!")
+        return
+    end
+
+    local originalGravity = Workspace.Gravity
+    if enabled then
+        Workspace.Gravity = 0
+        RunService.Heartbeat:Connect(function()
+            for _, coin in ipairs(Workspace:GetDescendants()) do
+                if coin.Name == "Coin_Server" and coin:IsA("BasePart") then
+                    local bodyVel = humanoidRoot:FindFirstChild("CoinBodyVelocity")
+                    if not bodyVel then
+                        bodyVel = Instance.new("BodyVelocity")
+                        bodyVel.Name = "CoinBodyVelocity"
+                        bodyVel.MaxForce = Vector3.new(4000, 4000, 4000)
+                        bodyVel.Parent = humanoidRoot
+                    end
+                    bodyVel.Velocity = (coin.Position - humanoidRoot.Position).Unit * 22
+                end
+            end
+        end)
+    else
+        Workspace.Gravity = originalGravity
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local bodyVel = hrp:FindFirstChild("CoinBodyVelocity")
+            if bodyVel then
+                bodyVel:Destroy()
+            end
+        end
+    end
+end
+
+-- Create Auto Farm Toggle
+local AutoFarmToggle = TabAuto:CreateToggle({
+    Name = "Auto Farm Coins (Optimized)",
+    CurrentValue = false,
+    Flag = "Toggle_Coins",
+    Callback = function(enabled)
+        autoFarmCoins(enabled)
+    end
+})
+
+-------------------------
+-- SECOND SCRIPT FOR SPECIFIC PLACEID (e.g. Ninja Simulator)
+-------------------------
+
