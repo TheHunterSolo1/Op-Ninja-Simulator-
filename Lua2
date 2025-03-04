@@ -1,227 +1,358 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-local TweenService = game:GetService("TweenService")
-local LocalPlayer = game.Players.LocalPlayer
+local ts = game:GetService("TweenService")
+local rs = game:GetService("RunService")
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+local ws = workspace
 
-
-local con2
-local con3
-local con4
-local con5
-
+-- Connection variables & flags
+local con, con2, con3, con4, con5, autoGunLoop, coinReachConn
+local tweenActive = false
+local autoGunBusy = false
+local coinOrig = {}
 
 local Window = Rayfield:CreateWindow({
-   Name = "Money Hub (0.1)",
-   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
-   LoadingTitle = "Loading Best MM2 Script",
-   LoadingSubtitle = "by Money",
-   Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
-
-   DisableRayfieldPrompts = false,
-   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
-
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = Luau, -- Create a custom folder for your hub/game
-      FileName = "Big Bro"
-   },
-
-   Discord = {
-      Enabled = true, -- Prompt the user to join your Discord server if their executor supports it
-      Invite = "KvvHREvB", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
-      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
-   },
-
-   KeySystem = true, -- Set this to true to use our key system
-   KeySettings = {
-      Title = "Untitled",
-      Subtitle = "Key System",
-      Note = "https://discord.gg/KvvHREvB", -- Use this to tell the user how to get a key
-      FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
-      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
-      GrabKeyFromSite = true, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
-      Key = {"MoneyProYe"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
-   }
+    Name = "Money Hub (0.1)",
+    Icon = 0,
+    LoadingTitle = "Loading Best MM2 Script",
+    LoadingSubtitle = "by Money",
+    Theme = "Default",
+    DisableRayfieldPrompts = false,
+    DisableBuildWarnings = false,
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "Luau",
+        FileName = "Big Bro"
+    },
+    Discord = {
+        Enabled = true,
+        Invite = "KvvHREvB",
+        RememberJoins = true
+    },
+    KeySystem = true,
+    KeySettings = {
+        Title = "Untitled",
+        Subtitle = "Key System",
+        Note = "https://discord.gg/KvvHREvB",
+        FileName = "Key",
+        SaveKey = true,
+        GrabKeyFromSite = true,
+        Key = {"MoneyProYe"}
+    }
 })
-local con
+
 local Tab = Window:CreateTab("ESP", 4483362458)
 local Auto = Window:CreateTab("Auto", 4483362458)
 local Section = Auto:CreateSection("Auto")
+
 Rayfield:Notify({
-   Title = "When Esp Shows all Innocent   disable them all and enable them again",
-   Content = "Your Great",
-   Duration = 6.5,
-   Image = nil,
+    Title = "When Esp Shows all Innocent disable them all and enable them again",
+    Content = "Your Great",
+    Duration = 6.5,
+    Image = nil,
 })
+
+-- Helper functions for Billboard Gui
+local function addBill(plr)
+    if plr.Character and plr.Character:FindFirstChild("Head") and not plr.Character:FindFirstChild("NameBillboard") then
+        local bb = Instance.new("BillboardGui")
+        bb.Name = "NameBillboard"
+        bb.Adornee = plr.Character.Head
+        bb.Size = UDim2.new(0,100,0,50)
+        bb.StudsOffset = Vector3.new(0,3,0)
+        bb.AlwaysOnTop = true
+        local tl = Instance.new("TextLabel", bb)
+        tl.Size = UDim2.new(1,0,1,0)
+        tl.BackgroundTransparency = 1
+        tl.Text = plr.Name
+        tl.TextColor3 = Color3.new(1,1,1)
+        tl.TextStrokeTransparency = 0.5
+        tl.Font = Enum.Font.SourceSansBold
+        tl.TextScaled = true
+        bb.Parent = plr.Character
+    end
+end
+
+local function remBill(plr)
+    if plr.Character and plr.Character:FindFirstChild("NameBillboard") then
+        plr.Character.NameBillboard:Destroy()
+    end
+end
+
+-- Innocent ESP (Green)
 local Toggle = Tab:CreateToggle({
-   Name = "InnocentESP",
-   CurrentValue = false,
-   Flag = "Toggle1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-   Callback = function(Value)
-   if Value then 
-   con = game:GetService("RunService").Heartbeat:Connect(function()
-   for _, plr in pairs(game:GetService("Players"):GetPlayers()) do
-   if plr.Character ~= LocalPlayer.Character then
-   local HasTool = plr.Character:FindFirstChild("Gun") or plr.Character:FindFirstChild("Knife") or plr.Backpack:FindFirstChild("Knife") or plr.Backpack:FindFirstChild("Gun")
-   if not HasTool then
-   if not plr.Character:FindFirstChild("Highlight") then
-   local Highlight = Instance.new("Highlight",plr.Character)
-   Highlight.Enabled = true
-   Highlight.FillColor = Color3.new(0,1,0)
-  end
-  end
-  end
-  end
-  end)
-  else
-  if con then
-  con:Disconnect()
-  con = nil
-  for _, v in pairs(game.Players:GetPlayers()) do
-  if v.Character then
- if
- v.Character:FindFirstChild("Highlight") then
-  v.Character:FindFirstChild("Highlight"):Destroy()
-   end
-   end
-   end
-   end
-   end
-   end,
+    Name = "InnocentESP",
+    CurrentValue = false,
+    Flag = "Toggle1",
+    Callback = function(val)
+        if val then
+            con = rs.Heartbeat:Connect(function()
+                for _,p in pairs(Players:GetPlayers()) do
+                    if p~=lp and p.Character then
+                        local hasTool = p.Character:FindFirstChild("Gun") or p.Character:FindFirstChild("Knife") or (p.Backpack and (p.Backpack:FindFirstChild("Gun") or p.Backpack:FindFirstChild("Knife")))
+                        if not hasTool then
+                            if not p.Character:FindFirstChild("Highlight") then
+                                local h = Instance.new("Highlight", p.Character)
+                                h.Enabled = true
+                                h.FillColor = Color3.new(0,1,0)
+                            end
+                            addBill(p)
+                        end
+                    end
+                end
+            end)
+        else
+            if con then con:Disconnect() con = nil end
+            for _,p in pairs(Players:GetPlayers()) do
+                if p.Character then
+                    if p.Character:FindFirstChild("Highlight") then
+                        p.Character.Highlight:Destroy()
+                    end
+                    remBill(p)
+                end
+            end
+        end
+    end,
 })
+
+-- Sheriff ESP (Blue)
 local Toggle2 = Tab:CreateToggle({
-   Name = "SheriffESP",
-   CurrentValue = false,
-   Flag = "Toggle2", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-   Callback = function(Value)
-   if Value then 
-   con2 = game:GetService("RunService").Heartbeat:Connect(function()
-   for _, plr in pairs(game.Players:GetPlayers()) do
-   if plr.Character ~= LocalPlayer.Character then
-   local HasGun = plr.Character:FindFirstChild("Gun") or plr.Backpack:FindFirstChild("Gun")
-   if HasGun then
-   if not plr.Character:FindFirstChild("Highlight") then
-   local Highlight = Instance.new("Highlight",plr.Character)
-   Highlight.Enabled = true
-   Highlight.FillColor = Color3.new(0,0,1)
-   end
-   end
-   end
-   end
-   end)
-   else
-   if con2 then
-   con2:Disconnect()
-   con2 = nil
-   for _, v in pairs(game.Players:GetPlayers()) do
-   if v.Character then
-   if v.Character:FindFirstChild("Gun") or v.Backpack:FindFirstChild("Gun") then
-   if v.Character:FindFirstChild("Highlight") then
-   v.Character:FindFirstChild("Highlight"):Destroy()
-   end
-   end
-   end
-   end
-   end
-   end
-   end,
-   })
-   
-local Toggle3 = Tab:CreateToggle({
-   Name = "MurdererESP",
-   CurrentValue = false,
-   Flag = "Toggle3", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-   Callback = function(Value)
-   if Value then 
-   con3 = game:GetService("RunService").Heartbeat:Connect(function()
-   for _, plr in pairs(game.Players:GetPlayers()) do
-   if plr.Character ~= LocalPlayer.Character then
-   local HasKnife = plr.Character:FindFirstChild("Knife") or plr.Backpack:FindFirstChild("Knife")
-   if HasKnife then
-   if not plr.Character:FindFirstChild("Highlight") then
-   local Highlight = Instance.new("Highlight",plr.Character)
-   Highlight.Enabled = true
-   Highlight.FillColor = Color3.new(1,0,0)
-   end
-   end
-   end
-   end
-   end)
-   else
-   if con3 then
-   con3:Disconnect()
-   con3 = nil
-   for _, v in pairs(game.Players:GetPlayers()) do
-   if v.Character then
-   if v.Character:FindFirstChild("Knife") or v.Backpack:FindFirstChild("Knife") then
-   if v.Character:FindFirstChild("Highlight") then
-   v.Character:FindFirstChild("Highlight"):Destroy()
-   end
-   end
-   end
-   end
-   end
-   end
-   end,
-   })
-   local Toggle4 = Auto:CreateToggle({
-   Name = "Auto Farm Coins(Very Bad Expext in Future Better)",
-   CurrentValue = false,
-   Flag = "Toggle4", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-   Callback = function(Value)
-   local HumanoidRootPart = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart
-   local Gravity = workspace.Gravity
-   if Value then
-   workspace.Gravity = 0
-   con4 = game:GetService("RunService").Heartbeat:Connect(function()
-   local closest = nil
-   for _, v in pairs(workspace:GetDescendants()) do
-   if v.Name == "Coin_Server" then
-   local BodyVelocity = Instance.new("BodyVelocity",HumanoidRootPart)
-BodyVelocity.MaxForce = Vector3.new(4000,4000,4000)
-BodyVelocity.Velocity = (v.Position - HumanoidRootPart.Position).unit * 22
-   end
-   end
-   end)
-   else
-   if con4 then
-con4:Disconnect()
-con4 = nil
-workspace.Gravity = 187
-HumanoidRootPart.BodyVelocity:Destroy()
-end
-end
-end,
+    Name = "SheriffESP",
+    CurrentValue = false,
+    Flag = "Toggle2",
+    Callback = function(val)
+        if val then
+            con2 = rs.Heartbeat:Connect(function()
+                for _,p in pairs(Players:GetPlayers()) do
+                    if p~=lp and p.Character then
+                        local hasGun = p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))
+                        if hasGun then
+                            if not p.Character:FindFirstChild("Highlight") then
+                                local h = Instance.new("Highlight", p.Character)
+                                h.Enabled = true
+                                h.FillColor = Color3.new(0,0,1)
+                            end
+                            addBill(p)
+                        end
+                    end
+                end
+            end)
+        else
+            if con2 then con2:Disconnect() con2 = nil end
+            for _,p in pairs(Players:GetPlayers()) do
+                if p.Character then
+                    if (p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))) and p.Character:FindFirstChild("Highlight") then
+                        p.Character.Highlight:Destroy()
+                    end
+                    remBill(p)
+                end
+            end
+        end
+    end,
 })
+
+-- Murderer ESP (Red)
+local Toggle3 = Tab:CreateToggle({
+    Name = "MurdererESP",
+    CurrentValue = false,
+    Flag = "Toggle3",
+    Callback = function(val)
+        if val then
+            con3 = rs.Heartbeat:Connect(function()
+                for _,p in pairs(Players:GetPlayers()) do
+                    if p~=lp and p.Character then
+                        local hasKnife = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
+                        if hasKnife then
+                            if not p.Character:FindFirstChild("Highlight") then
+                                local h = Instance.new("Highlight", p.Character)
+                                h.Enabled = true
+                                h.FillColor = Color3.new(1,0,0)
+                            end
+                            addBill(p)
+                        end
+                    end
+                end
+            end)
+        else
+            if con3 then con3:Disconnect() con3 = nil end
+            for _,p in pairs(Players:GetPlayers()) do
+                if p.Character then
+                    if (p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))) and p.Character:FindFirstChild("Highlight") then
+                        p.Character.Highlight:Destroy()
+                    end
+                    remBill(p)
+                end
+            end
+        end
+    end,
+})
+
+-- Beta Auto Farm Coins using TweenService
+local Toggle4 = Auto:CreateToggle({
+    Name = "Beta Auto Farm Coins",
+    CurrentValue = false,
+    Flag = "Toggle4",
+    Callback = function(val)
+        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        if val then
+            ws.Gravity = 0
+            con4 = rs.Heartbeat:Connect(function()
+                local coin, dist = nil, math.huge
+                for _,v in pairs(ws:GetDescendants()) do
+                    if v.Name=="Coin_Server" and v:IsA("BasePart") then
+                        local d = (v.Position-hrp.Position).Magnitude
+                        if d < dist then
+                            dist = d
+                            coin = v
+                        end
+                    end
+                end
+                if coin and not tweenActive then
+                    tweenActive = true
+                    local dur = dist/22
+                    local tw = ts:Create(hrp, TweenInfo.new(dur,Enum.EasingStyle.Linear), {CFrame = coin.CFrame})
+                    tw:Play()
+                    tw.Completed:Connect(function()
+                        tweenActive = false
+                    end)
+                end
+            end)
+        else
+            if con4 then con4:Disconnect() con4 = nil end
+            ws.Gravity = 187
+        end
+    end,
+})
+
+-- Gun ESP for GunDrops
 local Toggle5 = Tab:CreateToggle({
-   Name = "GunESP",
-   CurrentValue = false,
-   Flag = "Toggle3", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-   Callback = function(Value)
-   if Value then
-   con5 = game:GetService("RunService").Heartbeat:Connect(function()
-   for _, v in pairs(workspace:GetDescendants()) do
-   if v.Name == "GunDrop" then
-   if not v:FindFirstChild("Highlight") then
-   local Highlight = Instance.new("Highlight",v)
-   Highlight.FillColor = Color3.new(0,0,1)
-   Highlight.Enabled = true
-   end
-   end
-   end
-   end)
-   else
-   if con5 then
-   con5:Disconnect()
-   for _, part in pairs(workspace:GetDescendants()) do
-   if part.Name == "GunDrop" then
-   if part:FindFirstChild("Highlight") then
-   part.Highlight:Destroy()
-   end
-   end
-   end
-   end
-   end
-   end,
-   })
-   Rayfield:LoadConfiguration()
-   setclipboard("https://discord.gg/KvvHREvB")
+    Name = "GunESP",
+    CurrentValue = false,
+    Flag = "Toggle5",
+    Callback = function(val)
+        if val then
+            con5 = rs.Heartbeat:Connect(function()
+                for _,v in pairs(ws:GetDescendants()) do
+                    if v.Name=="GunDrop" and v:IsA("BasePart") then
+                        if not v:FindFirstChild("Highlight") then
+                            local h = Instance.new("Highlight", v)
+                            h.FillColor = Color3.new(0,0,1)
+                            h.Enabled = true
+                        end
+                    end
+                end
+            end)
+        else
+            if con5 then con5:Disconnect() end
+            for _,v in pairs(ws:GetDescendants()) do
+                if v.Name=="GunDrop" and v:FindFirstChild("Highlight") then
+                    v.Highlight:Destroy()
+                end
+            end
+        end
+    end,
+})
+
+-- Chat Button: Send Murderer and Sheriff Names in Chat
+local ChatButton = Auto:CreateButton({
+    Name = "Send Murderer and Sheriff In Chat",
+    Callback = function()
+        local mNames, sNames = {}, {}
+        for _,p in pairs(Players:GetPlayers()) do
+            if p~=lp and p.Character then
+                local isM = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
+                local isS = p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))
+                if isM then
+                    table.insert(mNames, p.Name)
+                elseif isS then
+                    table.insert(sNames, p.Name)
+                end
+            end
+        end
+        local mTxt = (#mNames>0) and table.concat(mNames, ", ") or "None"
+        local sTxt = (#sNames>0) and table.concat(sNames, ", ") or "None"
+        local msg = "Murderer: " .. mTxt .. " | Sheriff: " .. sTxt
+        game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
+    end,
+})
+
+-- Auto Get Gun toggle (using GunDrop)
+local Toggle6 = Auto:CreateToggle({
+    Name = "Auto Get Gun",
+    CurrentValue = false,
+    Flag = "Toggle6",
+    Callback = function(val)
+        if val then
+            autoGunLoop = rs.Heartbeat:Connect(function()
+                if autoGunBusy then return end
+                local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                local gun
+                for _,v in pairs(ws:GetDescendants()) do
+                    if v.Name=="GunDrop" and v:IsA("BasePart") then
+                        gun = v
+                        break
+                    end
+                end
+                if gun then
+                    autoGunBusy = true
+                    local oldC = hrp.CFrame
+                    local d = (hrp.Position - gun.Position).Magnitude
+                    local dur = d/22
+                    local tw1 = ts:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = gun.CFrame})
+                    tw1:Play()
+                    tw1.Completed:Connect(function()
+                        wait(0.5)
+                        local tw2 = ts:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = oldC})
+                        tw2:Play()
+                        tw2.Completed:Connect(function()
+                            autoGunBusy = false
+                        end)
+                    end)
+                end
+            end)
+        else
+            if autoGunLoop then
+                autoGunLoop:Disconnect()
+                autoGunLoop = nil
+            end
+        end
+    end,
+})
+
+-- Coins Reach toggle: Increase coin size to 4x (double twice)
+local Toggle7 = Auto:CreateToggle({
+    Name = "Coins Reach",
+    CurrentValue = false,
+    Flag = "Toggle7",
+    Callback = function(val)
+        if val then
+            for _,v in pairs(ws:GetDescendants()) do
+                if v.Name=="Coin_Server" and v:IsA("BasePart") then
+                    if not coinOrig[v] then coinOrig[v] = v.Size end
+                    v.Size = coinOrig[v] * 4
+                end
+            end
+            coinReachConn = ws.DescendantAdded:Connect(function(v)
+                if v.Name=="Coin_Server" and v:IsA("BasePart") then
+                    if not coinOrig[v] then coinOrig[v] = v.Size end
+                    v.Size = coinOrig[v] * 4
+                end
+            end)
+        else
+            for _,v in pairs(ws:GetDescendants()) do
+                if v.Name=="Coin_Server" and v:IsA("BasePart") and coinOrig[v] then
+                    v.Size = coinOrig[v]
+                    coinOrig[v] = nil
+                end
+            end
+            if coinReachConn then
+                coinReachConn:Disconnect()
+                coinReachConn = nil
+            end
+        end
+    end,
+})
+
+Rayfield:LoadConfiguration()
