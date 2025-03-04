@@ -224,4 +224,4 @@ local Toggle5 = Tab:CreateToggle({
    end,
    })
    Rayfield:LoadConfiguration()
-   
+   setclipboard("https://discord.gg/KvvHREvB")
