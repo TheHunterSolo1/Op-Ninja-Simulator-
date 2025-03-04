@@ -1,0 +1,60 @@
+if game.PlaceId == 4225025295 then
+    local Rayfield2 = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+    local Window2 = Rayfield2:CreateWindow({
+       Name = "Money Hub ",
+   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   LoadingTitle = "Loading Best op Ninja Simulator Script",
+   LoadingSubtitle = "by Money",
+   Theme = "Default",
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
+
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = Luau, -- Create a custom folder for your hub/game
+      FileName = "Big Bro"
+   },
+        Discord = {
+            Enabled = true,
+            Invite = "KvvHREvB",
+            RememberJoins = true
+        },
+        KeySystem = false,
+        KeySettings = {
+            Title = "Key System",
+            Subtitle = "Key System",
+            Note = "Key Is Hello",
+            FileName = "Key",
+            SaveKey = true,
+            GrabKeyFromSite = false,
+            Key = {"Hello"}
+        }
+    })
+
+    local TabFarm = Window2:CreateTab("Farm", 4483362458)
+
+    local AutoSwingToggle = TabFarm:CreateToggle({
+        Name = "Auto Swing",
+        CurrentValue = false,
+        Flag = "Toggle_AutoSwing",
+        Callback = function(enabled) local LocalPlayer = game:GetService("Players").LocalPlayer local RunService = game:GetService("RunService")
+            local character = LocalPlayer.Character
+            if not character then
+                logError("Character not loaded!")
+                return
+            end
+            if enabled then
+                RunService.RenderStepped:Connect(function()
+                    for _, tool in ipairs(character:GetDescendants()) do
+                        if tool:IsA("Tool") then tool.Enabled = true
+                            pcall(function()
+                                tool:Activate()
+                            end)
+                        end
+                    end
+                end)
+            end
+        end,
+    })
+end
