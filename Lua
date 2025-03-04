@@ -6,6 +6,7 @@ if game.PlaceId == 4225025295 then
    LoadingTitle = "Loading Best op Ninja Simulator Script",
    LoadingSubtitle = "by Money",
    Theme = "Default",
+   
 
    DisableRayfieldPrompts = false,
    DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
@@ -31,7 +32,7 @@ if game.PlaceId == 4225025295 then
             Key = {"Hello"}
         }
     })
-
+local con
     local TabFarm = Window2:CreateTab("Farm", 4483362458)
 
     local AutoSwingToggle = TabFarm:CreateToggle({
@@ -45,16 +46,20 @@ if game.PlaceId == 4225025295 then
                 return
             end
             if enabled then
-                RunService.RenderStepped:Connect(function()
+               con = RunService.RenderStepped:Connect(function()
                     for _, tool in ipairs(character:GetDescendants()) do
                         if tool:IsA("Tool") then tool.Enabled = true
-                            pcall(function()
+                            
                                 tool:Activate()
-                            end)
+                            end
                         end
-                    end
-                end)
-            end
+                    end)
+else
+if con then
+con:Disconnect()
+con = nil
+end
+                end
         end,
     })
 end
