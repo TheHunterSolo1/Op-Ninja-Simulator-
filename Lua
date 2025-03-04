@@ -21,15 +21,15 @@ if game.PlaceId == 4225025295 then
             Invite = "KvvHREvB",
             RememberJoins = true
         },
-        KeySystem = false,
+        KeySystem = true,
         KeySettings = {
             Title = "Key System",
-            Subtitle = "Key System",
-            Note = "Key Is Hello",
+            Subtitle = "https://discord.gg/KvvHREvB",
+            Note = "Join Discord to Get Key",
             FileName = "Key",
             SaveKey = true,
-            GrabKeyFromSite = false,
-            Key = {"Hello"}
+            GrabKeyFromSite = true,
+            Key = {"MoneyProYe"}
         }
     })
 local con
