@@ -34,91 +34,124 @@ if game.PlaceId == 4225025295 then
     local rs = game:GetService("RunService")
     local Players = game:GetService("Players")
     local lp = Players.LocalPlayer
-    local ws = workspace
     local ts = game:GetService("TweenService")
+    local vu = game:GetService("VirtualUser")
 
-    -------------------------------
-    -- Auto Swing (Very Fast)
-    -------------------------------
-    local swingCon
-    local AutoSwingToggle = Tab:CreateToggle({
-        Name = "Auto Swing",
+    ----------------------------------------------------------------
+    -- Auto Train Toggle
+    -- Iterates over every Tool in LocalPlayer.Character and calls Activate()
+    ----------------------------------------------------------------
+    local autoTrainCon
+    local AutoTrainToggle = Tab:CreateToggle({
+        Name = "Auto Train",
         CurrentValue = false,
-        Flag = "Toggle_AutoSwing",
+        Flag = "Toggle_AutoTrain",
         Callback = function(enabled)
-            local char = lp.Character
-            if not char then return end
+            local char = lp.Character or lp.CharacterAdded:Wait()
             if enabled then
-                swingCon = rs.Heartbeat:Connect(function()
-                    local tool = char:FindFirstChildWhichIsA("Tool")
-                    if tool then
-                        pcall(function() tool:Activate()  tool.Enabled = true  end)
+                autoTrainCon = rs.RenderStepped:Connect(function()
+                    for _, tool in ipairs(char:GetChildren()) do
+                        if tool:IsA("Tool") then
+                            pcall(function()
+                                tool:Activate()
+                            end)
+                        end
                     end
                 end)
             else
-                if swingCon then
-                    swingCon:Disconnect()
-                    swingCon = nil
+                if autoTrainCon then
+                    autoTrainCon:Disconnect()
+                    autoTrainCon = nil
                 end
             end
         end,
     })
 
-    -------------------------------
-    -- Safe Zone + Lag Reduce
-    -------------------------------
-    local safeZoneActive = false
-    local safeOldPos
-    local safePart
-    local orig = {}  -- table to store each part's original transparency
-    local SafeZoneToggle = Tab:CreateToggle({
-        Name = "Safe Zone + Lag Reduce",
+    ----------------------------------------------------------------
+    -- Fast Slash Toggle
+    -- Iterates over every Tool in LocalPlayer.Character and forces tool.Enabled = true
+    ----------------------------------------------------------------
+    local fastSlashCon
+    local FastSlashToggle = Tab:CreateToggle({
+        Name = "Fast Slash",
         CurrentValue = false,
-        Flag = "Toggle_SafeZone",
+        Flag = "Toggle_FastSlash",
+        Callback = function(enabled)
+            local char = lp.Character or lp.CharacterAdded:Wait()
+            if enabled then
+                fastSlashCon = rs.RenderStepped:Connect(function()
+                    for _, tool in ipairs(char:GetChildren()) do
+                        if tool:IsA("Tool") then
+                            pcall(function()
+                                tool.Enabled = true
+                            end)
+                        end
+                    end
+                end)
+            else
+                if fastSlashCon then
+                    fastSlashCon:Disconnect()
+                    fastSlashCon = nil
+                end
+            end
+        end,
+    })
+
+    ----------------------------------------------------------------
+    -- Helper: Simulate a mouse click on a GUI button using VirtualUser
+    ----------------------------------------------------------------
+    local function simulateClick(guiButton)
+        if guiButton and guiButton.AbsolutePosition and guiButton.AbsoluteSize and guiButton.Visible then
+            local pos = guiButton.AbsolutePosition + (guiButton.AbsoluteSize * 0.5)
+            vu:Button1Down(pos)
+            task.wait(0.1)
+            vu:Button1Up(pos)
+        end
+    end
+
+    ----------------------------------------------------------------
+    -- Auto Upgrade Toggle
+    -- Uses VirtualUser to simulate mouse clicks on upgrade buttons:
+    --   MainGui.UpgradeF.SwordF.SwordImgBtn
+    --   MainGui.UpgradeF.Class.ClassImgBtn
+    --   MainGui.UpgradeF.AscendF.AscendImgBtn
+    -- Make sure your Upgrade screen is open.
+    ----------------------------------------------------------------
+    local autoUpgradeCon
+    local AutoUpgradeToggle = Tab:CreateToggle({
+        Name = "Auto Upgrade",
+        CurrentValue = false,
+        Flag = "Toggle_AutoUpgrade",
         Callback = function(enabled)
             if enabled then
-                local char = lp.Character
-                if not char then return end
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if not hrp then return end
-                safeOldPos = hrp.CFrame
-                -- Create a safe zone platform (block sized)
-                safePart = Instance.new("Part")
-                safePart.Name = "Safe Zone + Lag Reduce"
-                safePart.Size = Vector3.new(10, 1, 10)
-                safePart.Anchored = true
-                safePart.CanCollide = true
-                safePart.Position = Vector3.new(hrp.Position.X, 1000, hrp.Position.Z)
-                safePart.Parent = ws
-                hrp.CFrame = safePart.CFrame + Vector3.new(0, 3, 0)
-                -- Disable rendering for lag reduction
-                for _,obj in pairs(ws:GetDescendants()) do
-                    if obj:IsA("BasePart") then
-                        if not orig[obj] then orig[obj] = obj.LocalTransparencyModifier end
-                        obj.LocalTransparencyModifier = 1
+                warn("Ensure your Upgrade screen is open for Auto Upgrade!")
+                autoUpgradeCon = rs.RenderStepped:Connect(function()
+                    local pg = lp:FindFirstChild("PlayerGui")
+                    if pg then
+                        local mainGui = pg:FindFirstChild("MainGui")
+                        if mainGui then
+                            local upg = mainGui:FindFirstChild("UpgradeF")
+                            if upg then
+                                local swordBtn = upg:FindFirstChild("SwordF") and upg.SwordF:FindFirstChild("SwordImgBtn")
+                                local classBtn = upg:FindFirstChild("Class") and upg.Class:FindFirstChild("ClassImgBtn")
+                                local ascendBtn = upg:FindFirstChild("AscendF") and upg.AscendF:FindFirstChild("AscendImgBtn")
+                                if swordBtn then
+                                    pcall(function() simulateClick(swordBtn) end)
+                                end
+                                if classBtn then
+                                    pcall(function() simulateClick(classBtn) end)
+                                end
+                                if ascendBtn then
+                                    pcall(function() simulateClick(ascendBtn) end)
+                                end
+                            end
+                        end
                     end
-                end
-                safeZoneActive = true
+                end)
             else
-                if safeZoneActive then
-                    local char = lp.Character
-                    if char then
-                        local hrp = char:FindFirstChild("HumanoidRootPart")
-                        if hrp and safeOldPos then
-                            hrp.CFrame = safeOldPos
-                        end
-                    end
-                    if safePart then
-                        safePart:Destroy()
-                        safePart = nil
-                    end
-                    for _,obj in pairs(ws:GetDescendants()) do
-                        if obj:IsA("BasePart") and orig[obj] then
-                            obj.LocalTransparencyModifier = orig[obj]
-                            orig[obj] = nil
-                        end
-                    end
-                    safeZoneActive = false
+                if autoUpgradeCon then
+                    autoUpgradeCon:Disconnect()
+                    autoUpgradeCon = nil
                 end
             end
         end,
