@@ -6,16 +6,21 @@ local lp = Players.LocalPlayer
 local ws = workspace
 
 -- Connection variables & flags
-local coinReachConn
+local con4, autoGunLoop, coinReachConn
 local tweenActive = false
 local autoGunBusy = false
 local coinOrig = {}
+local coinsReachEnabled = false
 
--- ESP toggle flags
+-- Global ESP flags & loop control (combined)
 local innocentActive = false
 local sheriffActive = false
 local murdererActive = false
 local gunESPActive = false
+local espLoopRunning = false
+
+-- Dropdown selection for coin farm method (Safe Method vs Not Safe Method)
+local coinFarmMethod = "Safe Method"
 
 local Window = Rayfield:CreateWindow({
     Name = "Money Hub (0.1)",
@@ -58,35 +63,49 @@ Rayfield:Notify({
     Image = nil,
 })
 
--- Helper functions for Billboard Gui (TextLabel now smaller)
-local function addBill(plr)
-    if plr.Character and plr.Character:FindFirstChild("Head") and not plr.Character:FindFirstChild("NameBillboard") then
+----------------------------------------------------------------
+-- Dropdown: Coin Farm Method Selection
+----------------------------------------------------------------
+local CoinFarmMethodDropdown = Auto:CreateDropdown({
+    Name = "Coin Farm Method",
+    Options = {"Safe Method", "Not Safe Method"},
+    CurrentOption = "Safe Method",
+    Callback = function(selected)
+        coinFarmMethod = selected
+    end,
+})
+
+----------------------------------------------------------------
+-- Helper Functions for BillboardGui (smaller TextLabel)
+----------------------------------------------------------------
+local function addBill(p)
+    if p.Character and p.Character:FindFirstChild("Head") and not p.Character:FindFirstChild("NameBillboard") then
         local bb = Instance.new("BillboardGui")
         bb.Name = "NameBillboard"
-        bb.Adornee = plr.Character.Head
-        bb.Size = UDim2.new(0,70,0,30)  -- smaller size
+        bb.Adornee = p.Character.Head
+        bb.Size = UDim2.new(0,70,0,30)  -- reduced size
         bb.StudsOffset = Vector3.new(0,3,0)
         bb.AlwaysOnTop = true
         local tl = Instance.new("TextLabel", bb)
         tl.Size = UDim2.new(1,0,1,0)
         tl.BackgroundTransparency = 1
-        tl.Text = plr.Name
+        tl.Text = p.Name
         tl.TextColor3 = Color3.new(1,1,1)
         tl.TextStrokeTransparency = 0.5
         tl.Font = Enum.Font.SourceSansBold
         tl.TextScaled = true
-        bb.Parent = plr.Character
+        bb.Parent = p.Character
     end
 end
 
-local function remBill(plr)
-    if plr.Character and plr.Character:FindFirstChild("NameBillboard") then
-        plr.Character.NameBillboard:Destroy()
+local function remBill(p)
+    if p.Character and p.Character:FindFirstChild("NameBillboard") then
+        p.Character.NameBillboard:Destroy()
     end
 end
 
 local function removeESPHighlights()
-    for _,p in pairs(Players:GetPlayers()) do
+    for _, p in pairs(Players:GetPlayers()) do
         if p.Character then
             local h = p.Character:FindFirstChild("Highlight")
             if h then h:Destroy() end
@@ -95,148 +114,133 @@ local function removeESPHighlights()
     end
 end
 
--- Innocent ESP Update (Green)
-local function updateInnocentESP()
-    while innocentActive do
-        for _,p in pairs(Players:GetPlayers()) do
-            if p ~= lp and p.Character then
-                local hasTool = p.Character:FindFirstChild("Gun") or p.Character:FindFirstChild("Knife") or 
-                    (p.Backpack and (p.Backpack:FindFirstChild("Gun") or p.Backpack:FindFirstChild("Knife")))
-                if not hasTool then
-                    if not p.Character:FindFirstChild("Highlight") then
-                        local h = Instance.new("Highlight", p.Character)
-                        h.Enabled = true
-                        h.FillColor = Color3.new(0,1,0)
+----------------------------------------------------------------
+-- Combined ESP Loop (Priority: Murderer > Sheriff > Innocent)
+----------------------------------------------------------------
+local function startESPLoop()
+    if not espLoopRunning then
+        espLoopRunning = true
+        spawn(function()
+            while innocentActive or sheriffActive or murdererActive do
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= lp and p.Character then
+                        local hasGun = p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))
+                        local hasKnife = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
+                        if murdererActive and hasKnife then
+                            if not p.Character:FindFirstChild("Highlight") then
+                                local h = Instance.new("Highlight", p.Character)
+                                h.Enabled = true
+                                h.FillColor = Color3.new(1,0,0)
+                            end
+                            addBill(p)
+                        elseif sheriffActive and hasGun then
+                            if not p.Character:FindFirstChild("Highlight") then
+                                local h = Instance.new("Highlight", p.Character)
+                                h.Enabled = true
+                                h.FillColor = Color3.new(0,0,1)
+                            end
+                            addBill(p)
+                        elseif innocentActive and not (hasGun or hasKnife) then
+                            if not p.Character:FindFirstChild("Highlight") then
+                                local h = Instance.new("Highlight", p.Character)
+                                h.Enabled = true
+                                h.FillColor = Color3.new(0,1,0)
+                            end
+                            addBill(p)
+                        else
+                            if p.Character:FindFirstChild("Highlight") then
+                                p.Character.Highlight:Destroy()
+                            end
+                            remBill(p)
+                        end
                     end
-                    addBill(p)
-                else
-                    if p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
-                    remBill(p)
                 end
+                task.wait(0.2)
             end
-        end
-        task.wait(0.2)
+            espLoopRunning = false
+            removeESPHighlights()
+        end)
     end
 end
 
--- Sheriff ESP Update (Blue)
-local function updateSheriffESP()
-    while sheriffActive do
-        for _,p in pairs(Players:GetPlayers()) do
-            if p ~= lp and p.Character then
-                local hasGun = p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))
-                if hasGun then
-                    if not p.Character:FindFirstChild("Highlight") then
-                        local h = Instance.new("Highlight", p.Character)
-                        h.Enabled = true
-                        h.FillColor = Color3.new(0,0,1)
-                    end
-                    addBill(p)
-                else
-                    if p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
-                    remBill(p)
-                end
-            end
-        end
-        task.wait(0.2)
+local function stopESPLoopIfNeeded()
+    if not (innocentActive or sheriffActive or murdererActive) then
+        espLoopRunning = false
+        removeESPHighlights()
     end
 end
 
--- Murderer ESP Update (Red)
-local function updateMurdererESP()
-    while murdererActive do
-        for _,p in pairs(Players:GetPlayers()) do
-            if p ~= lp and p.Character then
-                local hasKnife = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
-                if hasKnife then
-                    if not p.Character:FindFirstChild("Highlight") then
-                        local h = Instance.new("Highlight", p.Character)
-                        h.Enabled = true
-                        h.FillColor = Color3.new(1,0,0)
-                    end
-                    addBill(p)
-                else
-                    if p.Character:FindFirstChild("Highlight") then p.Character.Highlight:Destroy() end
-                    remBill(p)
-                end
-            end
-        end
-        task.wait(0.2)
-    end
-end
-
--- Gun ESP for GunDrops (update every 0.2 sec)
-local function updateGunESP()
-    while gunESPActive do
-        for _,v in pairs(ws:GetDescendants()) do
-            if v.Name == "GunDrop" and v:IsA("BasePart") then
-                if not v:FindFirstChild("Highlight") then
-                    local h = Instance.new("Highlight", v)
-                    h.FillColor = Color3.new(0,0,1)
-                    h.Enabled = true
-                end
-            end
-        end
-        task.wait(0.2)
-    end
-end
-
--- Toggle: InnocentESP
-local Toggle = Tab:CreateToggle({
+----------------------------------------------------------------
+-- ESP Toggles (Combined Loop)
+----------------------------------------------------------------
+local ToggleInnocent = Tab:CreateToggle({
     Name = "InnocentESP",
     CurrentValue = false,
     Flag = "Toggle1",
     Callback = function(val)
         innocentActive = val
         if val then
-            spawn(updateInnocentESP)
+            startESPLoop()
         else
-            removeESPHighlights()
+            stopESPLoopIfNeeded()
         end
     end,
 })
 
--- Toggle: SheriffESP
-local Toggle2 = Tab:CreateToggle({
+local ToggleSheriff = Tab:CreateToggle({
     Name = "SheriffESP",
     CurrentValue = false,
     Flag = "Toggle2",
     Callback = function(val)
         sheriffActive = val
         if val then
-            spawn(updateSheriffESP)
+            startESPLoop()
         else
-            removeESPHighlights()
+            stopESPLoopIfNeeded()
         end
     end,
 })
 
--- Toggle: MurdererESP
-local Toggle3 = Tab:CreateToggle({
+local ToggleMurderer = Tab:CreateToggle({
     Name = "MurdererESP",
     CurrentValue = false,
     Flag = "Toggle3",
     Callback = function(val)
         murdererActive = val
         if val then
-            spawn(updateMurdererESP)
+            startESPLoop()
         else
-            removeESPHighlights()
+            stopESPLoopIfNeeded()
         end
     end,
 })
 
--- Toggle: GunESP for GunDrops
-local Toggle5 = Tab:CreateToggle({
+----------------------------------------------------------------
+-- GunESP for GunDrops (update every 0.2 sec)
+----------------------------------------------------------------
+local ToggleGunESP = Tab:CreateToggle({
     Name = "GunESP",
     CurrentValue = false,
     Flag = "Toggle5",
     Callback = function(val)
         gunESPActive = val
         if val then
-            spawn(updateGunESP)
+            spawn(function()
+                while gunESPActive do
+                    for _, v in pairs(ws:GetDescendants()) do
+                        if v.Name == "GunDrop" and v:IsA("BasePart") then
+                            if not v:FindFirstChild("Highlight") then
+                                local h = Instance.new("Highlight", v)
+                                h.FillColor = Color3.new(0,0,1)
+                                h.Enabled = true
+                            end
+                        end
+                    end
+                    task.wait(0.2)
+                end
+            end)
         else
-            for _,v in pairs(ws:GetDescendants()) do
+            for _, v in pairs(ws:GetDescendants()) do
                 if v.Name == "GunDrop" and v:IsA("BasePart") and v:FindFirstChild("Highlight") then
                     v.Highlight:Destroy()
                 end
@@ -245,8 +249,11 @@ local Toggle5 = Tab:CreateToggle({
     end,
 })
 
--- Beta Auto Farm Coins using TweenService (unchanged)
-local Toggle4 = Auto:CreateToggle({
+----------------------------------------------------------------
+-- Beta Auto Farm Coins using TweenService (Safe & Not Safe Methods)
+-- Requires that "Coins Reach" is enabled.
+----------------------------------------------------------------
+local ToggleCoinsFarm = Auto:CreateToggle({
     Name = "Beta Auto Farm Coins",
     CurrentValue = false,
     Flag = "Toggle4",
@@ -254,10 +261,14 @@ local Toggle4 = Auto:CreateToggle({
         local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         if val then
+            if not coinsReachEnabled then
+                warn("Enable 'Coins Reach' first for Safe Auto Farm!")
+                return
+            end
             ws.Gravity = 0
             con4 = rs.Heartbeat:Connect(function()
                 local coin, dist = nil, math.huge
-                for _,v in pairs(ws:GetDescendants()) do
+                for _, v in pairs(ws:GetDescendants()) do
                     if v.Name == "Coin_Server" and v:IsA("BasePart") then
                         local d = (v.Position - hrp.Position).Magnitude
                         if d < dist then
@@ -268,10 +279,19 @@ local Toggle4 = Auto:CreateToggle({
                 end
                 if coin and not tweenActive then
                     tweenActive = true
-                    local dur = dist / 22
-                    local tw = ts:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = coin.CFrame})
+                    local dest, dur
+                    if coinFarmMethod == "Safe Method" then
+                        dest = coin.CFrame * CFrame.new(0, -3.5, 0)
+                        dur = math.min(dist / 22, 3.5)
+                    else -- Not Safe Method
+                        dest = coin.CFrame
+                        dur = 0.1
+                    end
+                    local tw = ts:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = dest})
                     tw:Play()
-                    tw.Completed:Connect(function()
+                    -- Minimal delay; no waiting for tween.Completed
+                    task.spawn(function()
+                        task.wait(0.05)
                         tweenActive = false
                     end)
                 end
@@ -283,12 +303,14 @@ local Toggle4 = Auto:CreateToggle({
     end,
 })
 
--- Chat Button: Send Murderer and Sheriff Names in Chat (unchanged)
+----------------------------------------------------------------
+-- Chat Button: Send Murderer and Sheriff Names in Chat (Fixed)
+----------------------------------------------------------------
 local ChatButton = Auto:CreateButton({
     Name = "Send Murderer and Sheriff In Chat",
     Callback = function()
         local mNames, sNames = {}, {}
-        for _,p in pairs(Players:GetPlayers()) do
+        for _, p in pairs(Players:GetPlayers()) do
             if p ~= lp and p.Character then
                 local isM = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
                 local isS = p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))
@@ -302,11 +324,18 @@ local ChatButton = Auto:CreateButton({
         local mTxt = (#mNames > 0) and table.concat(mNames, ", ") or "None"
         local sTxt = (#sNames > 0) and table.concat(sNames, ", ") or "None"
         local msg = "Murderer: " .. mTxt .. " | Sheriff: " .. sTxt
-        game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
+        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+        if remote and remote:FindFirstChild("SayMessageRequest") then
+            remote.SayMessageRequest:FireServer(msg, "All")
+        else
+            warn("Chat remote not found!")
+        end
     end,
 })
 
+----------------------------------------------------------------
 -- Auto Get Gun toggle (using GunDrop) (unchanged)
+----------------------------------------------------------------
 local Toggle6 = Auto:CreateToggle({
     Name = "Auto Get Gun",
     CurrentValue = false,
@@ -318,7 +347,7 @@ local Toggle6 = Auto:CreateToggle({
                 local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
                 local gun
-                for _,v in pairs(ws:GetDescendants()) do
+                for _, v in pairs(ws:GetDescendants()) do
                     if v.Name == "GunDrop" and v:IsA("BasePart") then
                         gun = v
                         break
@@ -350,14 +379,17 @@ local Toggle6 = Auto:CreateToggle({
     end,
 })
 
--- Coins Reach toggle: Increase coin size to 4x (and restore original size when off)
+----------------------------------------------------------------
+-- Coins Reach toggle: Increase coin size to 4x and restore original size when off
+----------------------------------------------------------------
 local Toggle7 = Auto:CreateToggle({
     Name = "Coins Reach",
     CurrentValue = false,
     Flag = "Toggle7",
     Callback = function(val)
         if val then
-            for _,v in pairs(ws:GetDescendants()) do
+            coinsReachEnabled = true
+            for _, v in pairs(ws:GetDescendants()) do
                 if v.Name == "Coin_Server" and v:IsA("BasePart") then
                     if not coinOrig[v] then coinOrig[v] = v.Size end
                     v.Size = coinOrig[v] * 4
@@ -370,7 +402,8 @@ local Toggle7 = Auto:CreateToggle({
                 end
             end)
         else
-            for _,v in pairs(ws:GetDescendants()) do
+            coinsReachEnabled = false
+            for _, v in pairs(ws:GetDescendants()) do
                 if v.Name == "Coin_Server" and v:IsA("BasePart") and coinOrig[v] then
                     v.Size = coinOrig[v]
                     coinOrig[v] = nil
