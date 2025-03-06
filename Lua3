@@ -1,0 +1,645 @@
+-- SERVICES & LOCAL REFERENCES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local PathfindingService = game:GetService("PathfindingService")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = workspace
+local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- LOAD RAYFIELD UI
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- CREATE WINDOW
+local Window = Rayfield:CreateWindow({
+    Name = "Money Hub (Doors)",
+    Icon = 0,
+    LoadingTitle = "Loading Money Hub (Doors)",
+    LoadingSubtitle = "by Money",
+    Theme = "Default",
+    DisableRayfieldPrompts = false,
+    DisableBuildWarnings = false,
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "Luau",
+        FileName = "Big Hub"
+    },
+    Discord = {
+        Enabled = true,
+        Invite = "KvvHREvB",
+        RememberJoins = true
+    },
+    KeySystem = false
+})
+
+---------------------------
+-- TAB CREATION
+---------------------------
+local ESP_Tab = Window:CreateTab("ESP", "rewind")
+local Main_Tab = Window:CreateTab("Main", "clock")
+
+---------------------------
+-- GLOBALS & VARIABLES
+---------------------------
+-- For ESP toggles
+local doorESPCon, keyESPCon, bookESPCon, entityESPCon, entityNotifCon
+local traceLines = {}      -- holds Drawing lines if available
+local drawingAvailable = (type(Drawing) == "table")
+-- For Godmode
+local originalCollisionPos = nil
+-- For Speed Bypass
+local speedBypassActive = false
+local clonedCollision = nil
+-- For No Acceleration
+local originalPHProps = nil
+-- For Auto Doors
+local autoDoorsCon
+local agentRadius = 2       -- default value; adjustable
+local waypointsSpacing = 1  -- seconds; adjustable
+local autoDoorsNotified = false
+
+---------------------------
+-- UTILITY FUNCTIONS
+---------------------------
+
+-- Trace drawing: Draw a line from local player's head to the bottom of target (if Drawing is available)
+local function createTrace(targetPart, color)
+    if not drawingAvailable then return nil end
+    local line = Drawing.new("Line")
+    line.Color = color
+    line.Thickness = 0.5
+    line.Transparency = 0.5
+    line.Visible = true
+    return line
+end
+
+local function updateTrace(line, targetPart)
+    if not (line and targetPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")) then return end
+    local headPos = Camera:WorldToViewportPoint(LocalPlayer.Character.Head.Position)
+    local targetPos = Camera:WorldToViewportPoint(targetPart.Position - Vector3.new(0, targetPart.Size.Y/2, 0))
+    line.From = Vector2.new(headPos.X, headPos.Y)
+    line.To = Vector2.new(targetPos.X, targetPos.Y)
+end
+
+local function removeTrace(line)
+    if line then line:Remove() end
+end
+
+-- ESP helper: Add a small BillboardGui and Highlight to a BasePart
+local function addESP(part, labelText, color, size)
+    if part and part:IsA("BasePart") then
+        if not part:FindFirstChild("ESPBillboard") then
+            local bb = Instance.new("BillboardGui")
+            bb.Name = "ESPBillboard"
+            bb.Adornee = part
+            bb.Size = UDim2.new(0, size or 40, 0, (size and size * 0.5) or 20)
+            bb.StudsOffset = Vector3.new(0, 1.5, 0)
+            bb.AlwaysOnTop = true
+            local label = Instance.new("TextLabel", bb)
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.BackgroundTransparency = 1
+            label.Text = labelText
+            label.TextColor3 = color
+            label.TextScaled = true
+            label.Font = Enum.Font.SourceSans
+            bb.Parent = part
+        end
+        if not part:FindFirstChild("Highlight") then
+            local hl = Instance.new("Highlight", part)
+            hl.FillColor = color
+            hl.Enabled = true
+        end
+    end
+end
+
+local function removeESP(part)
+    if part then
+        local bb = part:FindFirstChild("ESPBillboard")
+        if bb then bb:Destroy() end
+        local hl = part:FindFirstChild("Highlight")
+        if hl then hl:Destroy() end
+    end
+end
+
+---------------------------
+-- ESP TAB FEATURES
+---------------------------
+
+-- Door ESP: Scan workspace.CurrentRooms for Models named "Door" and ESP their child part "Door"
+local DoorESPToggle = ESP_Tab:CreateToggle({
+    Name = "Door ESP",
+    CurrentValue = false,
+    Flag = "DoorESP",
+    Callback = function(enabled)
+        if enabled then
+            doorESPCon = RunService.Heartbeat:Connect(function()
+                for _, model in pairs(Workspace.CurrentRooms:GetDescendants()) do
+                    if model.Name == "Door" and model:IsA("Model") then
+                        local doorPart = model:FindFirstChild("Door")
+                        if doorPart then
+                            addESP(doorPart, "Door", Color3.new(1,0,0), 40)
+                            if drawingAvailable then
+                                if not traceLines[doorPart] then
+                                    traceLines[doorPart] = createTrace(doorPart, Color3.new(1,0,0))
+                                else
+                                    updateTrace(traceLines[doorPart], doorPart)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            if doorESPCon then doorESPCon:Disconnect() doorESPCon = nil end
+            for _, model in pairs(Workspace.CurrentRooms:GetDescendants()) do
+                if model.Name == "Door" and model:IsA("Model") then
+                    local doorPart = model:FindFirstChild("Door")
+                    if doorPart then
+                        removeESP(doorPart)
+                        if drawingAvailable and traceLines[doorPart] then
+                            removeTrace(traceLines[doorPart])
+                            traceLines[doorPart] = nil
+                        end
+                    end
+                end
+            end
+        end
+    end,
+})
+
+-- Key ESP: Scan workspace.CurrentRooms for Models named "KeyObtain"
+local KeyESPToggle = ESP_Tab:CreateToggle({
+    Name = "Key ESP",
+    CurrentValue = false,
+    Flag = "KeyESP",
+    Callback = function(enabled)
+        if enabled then
+            keyESPCon = RunService.Heartbeat:Connect(function()
+                for _, model in pairs(Workspace.CurrentRooms:GetDescendants()) do
+                    if model.Name == "KeyObtain" and model:IsA("Model") then
+                        local keyPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+                        if keyPart then
+                            addESP(keyPart, "Key", Color3.new(0,1,1), 40)
+                            if drawingAvailable then
+                                if not traceLines[keyPart] then
+                                    traceLines[keyPart] = createTrace(keyPart, Color3.new(0,1,1))
+                                else
+                                    updateTrace(traceLines[keyPart], keyPart)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            if keyESPCon then keyESPCon:Disconnect() keyESPCon = nil end
+            for _, model in pairs(Workspace.CurrentRooms:GetDescendants()) do
+                if model.Name == "KeyObtain" and model:IsA("Model") then
+                    local keyPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+                    if keyPart then
+                        removeESP(keyPart)
+                        if drawingAvailable and traceLines[keyPart] then
+                            removeTrace(traceLines[keyPart])
+                            traceLines[keyPart] = nil
+                        end
+                    end
+                end
+            end
+        end
+    end,
+})
+
+-- (Optional) Book ESP: For Models named "LiveHintBook" in Workspace.CurrentRooms
+local BookESPToggle = ESP_Tab:CreateToggle({
+    Name = "Book ESP",
+    CurrentValue = false,
+    Flag = "BookESP",
+    Callback = function(enabled)
+        if enabled then
+            bookESPCon = RunService.Heartbeat:Connect(function()
+                for _, model in pairs(Workspace.CurrentRooms:GetDescendants()) do
+                    if model.Name == "LiveHintBook" and model:IsA("Model") then
+                        local bookPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+                        if bookPart then
+                            addESP(bookPart, "Book", Color3.new(1,1,1), 40)
+                            if drawingAvailable then
+                                if not traceLines[bookPart] then
+                                    traceLines[bookPart] = createTrace(bookPart, Color3.new(1,1,1))
+                                else
+                                    updateTrace(traceLines[bookPart], bookPart)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            if bookESPCon then bookESPCon:Disconnect() bookESPCon = nil end
+            for _, model in pairs(Workspace.CurrentRooms:GetDescendants()) do
+                if model.Name == "LiveHintBook" and model:IsA("Model") then
+                    local bookPart = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+                    if bookPart then
+                        removeESP(bookPart)
+                        if drawingAvailable and traceLines[bookPart] then
+                            removeTrace(traceLines[bookPart])
+                            traceLines[bookPart] = nil
+                        end
+                    end
+                end
+            end
+        end
+    end,
+})
+
+-- Entity ESP: For Models named "RushMoving", "AmbushMoving", "A60", "A120", "FigureRig"
+local EntityESPToggle = ESP_Tab:CreateToggle({
+    Name = "Entity ESP",
+    CurrentValue = false,
+    Flag = "EntityESP",
+    Callback = function(enabled)
+        local entityNames = { RushMoving = true, AmbushMoving = true, A60 = true, A120 = true, FigureRig = true }
+        if enabled then
+            entityESPCon = RunService.Heartbeat:Connect(function()
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    if entityNames[obj.Name] and obj:IsA("Model") then
+                        local targetPart = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                        if targetPart then
+                            addESP(targetPart, obj.Name, Color3.new(1,1,0), 40)
+                            if drawingAvailable then
+                                if not traceLines[targetPart] then
+                                    traceLines[targetPart] = createTrace(targetPart, Color3.new(1,1,0))
+                                else
+                                    updateTrace(traceLines[targetPart], targetPart)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            if entityESPCon then entityESPCon:Disconnect() entityESPCon = nil end
+            local entityNames = { RushMoving = true, AmbushMoving = true, A60 = true, A120 = true, FigureRig = true }
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if entityNames[obj.Name] and obj:IsA("Model") then
+                    local targetPart = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                    if targetPart then
+                        removeESP(targetPart)
+                        if drawingAvailable and traceLines[targetPart] then
+                            removeTrace(traceLines[targetPart])
+                            traceLines[targetPart] = nil
+                        end
+                    end
+                end
+            end
+        end
+    end,
+})
+
+-- Entity Notification: When a descendant with name "RushMoving", "AmbushMoving", "A60", or "A120" spawns, notify once.
+local EntityNotifToggle = ESP_Tab:CreateToggle({
+    Name = "Entity Notification",
+    CurrentValue = false,
+    Flag = "EntityNotif",
+    Callback = function(enabled)
+        local notifNames = { RushMoving = true, AmbushMoving = true, A60 = true, A120 = true }
+        if enabled then
+            entityNotifCon = Workspace.DescendantAdded:Connect(function(child)
+                if child and notifNames[child.Name] and not child:FindFirstChild("AlreadyNotified") then
+                    local marker = Instance.new("BoolValue", child)
+                    marker.Name = "AlreadyNotified"
+                    Rayfield:Notify({
+                        Title = "Entity Alert",
+                        Content = "Hide!",
+                        Duration = 5,
+                        Image = nil
+                    })
+                    task.delay(10, function() marker:Destroy() end)
+                end
+            end)
+        else
+            if entityNotifCon then
+                entityNotifCon:Disconnect()
+                entityNotifCon = nil
+            end
+        end
+    end,
+})
+
+----------------------------
+-- MAIN TAB FEATURES (AUTO FEATURES)
+----------------------------
+local Main_Section = Main_Tab:CreateSection("Main Functions")
+
+local currentFOV = 70
+local currentSpeed = 16
+
+-- Continuous update of FOV and WalkSpeed via RenderStepped
+local mainCon = RunService.RenderStepped:Connect(function()
+    if Camera then
+        Camera.FieldOfView = currentFOV
+    end
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    if hum then
+        hum.WalkSpeed = currentSpeed
+    end
+end)
+
+local fovSlider = Main_Tab:CreateSlider({
+    Name = "Field of View",
+    Range = {70, 120},
+    Increment = 1,
+    Suffix = "°",
+    CurrentValue = currentFOV,
+    Flag = "FOVSlider",
+    Callback = function(val)
+        currentFOV = val
+    end,
+})
+
+local speedSlider = Main_Tab:CreateSlider({
+    Name = "Speed Slider",
+    Range = {16, 50},
+    Increment = 1,
+    Suffix = " studs",
+    CurrentValue = currentSpeed,
+    Flag = "SpeedSlider",
+    Callback = function(val)
+        currentSpeed = val
+    end,
+})
+
+-- Godmode Toggle: Adjust "Collision" part position by -2.5 studs
+local GodmodeToggle = Main_Tab:CreateToggle({
+    Name = "Godmode",
+    CurrentValue = false,
+    Flag = "Godmode",
+    Callback = function(enabled)
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local collision = char:FindFirstChild("Collision")
+        if collision then
+            if enabled then
+                if not originalCollisionPos then
+                    originalCollisionPos = collision.Position
+                end
+                collision.Position = originalCollisionPos - Vector3.new(0, 2.5, 0)
+            else
+                if originalCollisionPos then
+                    collision.Position = originalCollisionPos
+                    originalCollisionPos = nil
+                end
+            end
+        end
+    end,
+})
+
+-- Speed Bypass Toggle: Clone "Collision" part and toggle its Massless property every 0.2 sec
+local SpeedBypassToggle = Main_Tab:CreateToggle({
+    Name = "Speed Bypass",
+    CurrentValue = false,
+    Flag = "SpeedBypass",
+    Callback = function(enabled)
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local collision = char:FindFirstChild("Collision")
+        if enabled then
+            if collision then
+                clonedCollision = collision:Clone()
+                clonedCollision.Name = "ClonedCollision"
+                local crouch = clonedCollision:FindFirstChild("CollisionCrouch")
+                if crouch then crouch:Destroy() end
+                clonedCollision.Massless = true
+                clonedCollision.Parent = collision.Parent
+                speedBypassActive = true
+                spawn(function()
+                    while speedBypassActive do
+                        if clonedCollision then
+                            clonedCollision.Massless = true
+                            task.wait(0.2)
+                            clonedCollision.Massless = false
+                            task.wait(0.2)
+                        else
+                            break
+                        end
+                    end
+                end)
+            end
+        else
+            speedBypassActive = false
+            if clonedCollision then
+                clonedCollision:Destroy()
+                clonedCollision = nil
+            end
+        end
+    end,
+})
+
+-- No Acceleration Toggle: Set HumanoidRootPart's CustomPhysicalProperties to new with Density = 100
+local NoAccelToggle = Main_Tab:CreateToggle({
+    Name = "No Acceleration",
+    CurrentValue = false,
+    Flag = "NoAccel",
+    Callback = function(enabled)
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            if enabled then
+                if not originalPHProps then
+                    originalPHProps = hrp.CustomPhysicalProperties
+                end
+                hrp.CustomPhysicalProperties = PhysicalProperties.new(100, originalPHProps.Friction, originalPHProps.Elasticity, originalPHProps.FrictionWeight, originalPHProps.ElasticityWeight)
+            else
+                if originalPHProps then
+                    hrp.CustomPhysicalProperties = originalPHProps
+                    originalPHProps = nil
+                end
+            end
+        end
+    end,
+})
+
+-- Auto Interact Toggle: Find closest ProximityPrompt and fire it using fireproximityprompt
+local autoInteractCon
+local AutoInteractToggle = Main_Tab:CreateToggle({
+    Name = "Auto Interact",
+    CurrentValue = false,
+    Flag = "AutoInteract",
+    Callback = function(enabled)
+        if enabled then
+            autoInteractCon = RunService.RenderStepped:Connect(function()
+                local char = LocalPlayer.Character
+                if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+                local hrpPos = char.HumanoidRootPart.Position
+                local closestPrompt, closestDist = nil, math.huge
+                for _, prompt in pairs(Workspace:GetDescendants()) do
+                    if prompt:IsA("ProximityPrompt") and not string.find(prompt.Name, "Hide") then
+                        local parentPart = prompt.Parent
+                        if parentPart and parentPart:IsA("BasePart") then
+                            local dist = (parentPart.Position - hrpPos).Magnitude
+                            if dist < closestDist then
+                                closestDist = dist
+                                closestPrompt = prompt
+                            end
+                        end
+                    end
+                end
+                if closestPrompt then
+                    pcall(function()
+                        fireproximityprompt(closestPrompt)
+                    end)
+                end
+            end)
+        else
+            if autoInteractCon then
+                autoInteractCon:Disconnect()
+                autoInteractCon = nil
+            end
+        end
+    end,
+})
+
+-- Auto Doors Toggle: Use PathfindingService to move towards a target.
+local autoDoorsCon
+local AutoDoorsToggle = Main_Tab:CreateToggle({
+    Name = "Auto Doors",
+    CurrentValue = false,
+    Flag = "AutoDoors",
+    Callback = function(enabled)
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        if not hrp or not hum then return end
+        if enabled then
+            autoDoorsCon = RunService.Heartbeat:Connect(function()
+                local targetPos = nil
+                -- Try KeyObtain first
+                for _, model in pairs(Workspace.CurrentRooms:GetDescendants()) do
+                    if model.Name == "KeyObtain" and model:IsA("Model") then
+                        local part = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+                        if part then
+                            targetPos = part.Position
+                            break
+                        end
+                    end
+                end
+                -- If not, try Door
+                if not targetPos then
+                    for _, model in pairs(Workspace.CurrentRooms:GetDescendants()) do
+                        if model.Name == "Door" and model:IsA("Model") then
+                            local part = model:FindFirstChild("Door")
+                            if part then
+                                targetPos = part.Position
+                                break
+                            end
+                        end
+                    end
+                end
+                if targetPos then
+                    hum.JumpPower = 0  -- disable jumping while pathing
+                    local path = PathfindingService:CreatePath({
+                        AgentRadius = agentRadius,
+                        AgentHeight = 5,
+                        AgentCanJump = false
+                    })
+                    path:ComputeAsync(hrp.Position, targetPos)
+                    if path.Status == Enum.PathStatus.Success then
+                        local waypoints = path:GetWaypoints()
+                        for i, wp in ipairs(waypoints) do
+                            local tween = TweenService:Create(hrp, TweenInfo.new(waypointsSpacing, Enum.EasingStyle.Linear), {CFrame = CFrame.new(wp.Position)})
+                            tween:Play()
+                            tween.Completed:Wait()
+                        end
+                    else
+                        if not autoDoorsNotified then
+                            Rayfield:Notify({
+                                Title = "Auto Doors",
+                                Content = "Path not found!",
+                                Duration = 5,
+                                Image = nil
+                            })
+                            autoDoorsNotified = true
+                            task.delay(10, function() autoDoorsNotified = false end)
+                        end
+                    end
+                    hum.JumpPower = 50 -- restore jump power
+                end
+            end)
+        else
+            if autoDoorsCon then
+                autoDoorsCon:Disconnect()
+                autoDoorsCon = nil
+            end
+        end
+    end,
+})
+
+-- Agent Radius Slider for Auto Doors
+local AgentRadiusSlider = Main_Tab:CreateSlider({
+    Name = "Agent Radius",
+    Range = {0.1, 10},
+    Increment = 0.1,
+    Suffix = "",
+    CurrentValue = agentRadius,
+    Flag = "AgentRadius",
+    Callback = function(val)
+        agentRadius = val
+    end,
+})
+
+-- Waypoints Spacing Slider for Auto Doors
+local WaypointsSpacingSlider = Main_Tab:CreateSlider({
+    Name = "Waypoints Spacing",
+    Range = {0.1, 10},
+    Increment = 0.1,
+    Suffix = " sec",
+    CurrentValue = waypointsSpacing,
+    Flag = "WaypointsSpacing",
+    Callback = function(val)
+        waypointsSpacing = val
+    end,
+})
+
+-- Speed Bypass Toggle: Clone "Collision" and toggle Massless every 0.2 sec.
+local SpeedBypassToggle = Main_Tab:CreateToggle({
+    Name = "Speed Bypass",
+    CurrentValue = false,
+    Flag = "SpeedBypass",
+    Callback = function(enabled)
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local collision = char:FindFirstChild("Collision")
+        if enabled then
+            if collision then
+                clonedCollision = collision:Clone()
+                clonedCollision.Name = "ClonedCollision"
+                local crouch = clonedCollision:FindFirstChild("CollisionCrouch")
+                if crouch then crouch:Destroy() end
+                clonedCollision.Massless = true
+                clonedCollision.Parent = collision.Parent
+                speedBypassActive = true
+                spawn(function()
+                    while speedBypassActive do
+                        if clonedCollision then
+                            clonedCollision.Massless = true
+                            task.wait(0.2)
+                            clonedCollision.Massless = false
+                            task.wait(0.2)
+                        else
+                            break
+                        end
+                    end
+                end)
+            end
+        else
+            speedBypassActive = false
+            if clonedCollision then
+                clonedCollision:Destroy()
+                clonedCollision = nil
+            end
+        end
+    end,
+})
+
+----------------------------
+-- FINALIZE UI
+----------------------------
+Rayfield:LoadConfiguration()
