@@ -370,29 +370,6 @@ local speedSlider = Main_Tab:CreateSlider({
     end,
 })
 
--- Godmode Toggle: Adjust "Collision" part position by -2.5 studs
-local GodmodeToggle = Main_Tab:CreateToggle({
-    Name = "Godmode",
-    CurrentValue = false,
-    Flag = "Godmode",
-    Callback = function(enabled)
-        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local collision = char:FindFirstChild("Collision")
-        if collision then
-            if enabled then
-                if not originalCollisionPos then
-                    originalCollisionPos = collision.Position
-                end
-                collision.Position = originalCollisionPos - Vector3.new(0, 2.5, 0)
-            else
-                if originalCollisionPos then
-                    collision.Position = originalCollisionPos
-                    originalCollisionPos = nil
-                end
-            end
-        end
-    end,
-})
 
 -- Speed Bypass Toggle: Clone "Collision" part and toggle its Massless property every 0.2 sec
 local SpeedBypassToggle = Main_Tab:CreateToggle({
