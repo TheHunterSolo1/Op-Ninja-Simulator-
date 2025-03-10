@@ -1,414 +1,546 @@
-if game.PlaceId == 4225025295 then
-    -- Load Rayfield UI and create the main window
-    local rf = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-    local win = rf:CreateWindow({
-        Name = "Money Hub",
-        Icon = 0,
-        LoadingTitle = "Loading Best OP Ninja Simulator Script",
-        LoadingSubtitle = "by Money",
-        Theme = "Default",
-        ConfigurationSaving = {
-            Enabled = true,
-            FolderName = "Luau",
-            FileName = "BigBro"
-        },
-        Discord = {
-            Enabled = true,
-            Invite = "KvvHREvB",
-            RememberJoins = true
-        },
-        KeySystem = true,
-        KeySettings = {
-            Title = "Key System",
-            Subtitle = "https://discord.gg/KvvHREvB",
-            Note = "Join Discord to Get Key",
-            FileName = "Key",
-            SaveKey = true,
-            GrabKeyFromSite = true,
-            Key = {"MoneyProYe"}
-        }
-    })
+if game.PlaceId ~= 4225025295 then return end
 
-    -- Services and Global Variables
-    local rs = game:GetService("RunService")
-    local Players = game:GetService("Players")
-    local lp = Players.LocalPlayer
+local rf = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local win = rf:CreateWindow({
+    Name = "Money Hub",
+    Icon = 0,
+    LoadingTitle = "Loading Best OP Ninja Simulator Script",
+    LoadingSubtitle = "by Money",
+    Theme = "Default",
+    ConfigurationSaving = {Enabled = true, FolderName = "Luau", FileName = "BigBro"},
+    Discord = {Enabled = true, Invite = "KvvHREvB", RememberJoins = true},
+    KeySystem = true,
+    KeySettings = {
+        Title = "Key System",
+        Subtitle = "https://discord.gg/KvvHREvB",
+        Note = "Join Discord to Get Key",
+        FileName = "Key",
+        SaveKey = true,
+        GrabKeyFromSite = true,
+        Key = {"MoneyProYe"}
+    }
+})
 
-    local autoTrainCon, fastSlashCon, autoFarmHonorCon, autoEquipCon, autoHideCon, avoidHackersCon
-    local farmMode = "Lowest Health"  -- Options: "Lowest Health", "Closest Player"
-    local oldPosition = nil           -- Saved position (for Auto Farm Honor & Auto Hide)
-    local teleportOffset = Vector3.new(0, -3.5, 0)
-    local smoothTeleport = false
-    local teleportSpeed = 0.2
-    local swordSize = Vector3.new(1, 1, 1)
+-- Services & Local Player
+local RS = game:GetService("RunService")
+local TS = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local WS = game:GetService("Workspace")
+local lp = Players.LocalPlayer
 
-    -- Auto Hide parameters (Hide Height now between 1000 and 5000)
-    local hideDetectionRange = 50     -- Horizontal (X,Z) range for auto hide
-    local hideHeight = 1000           -- Default hide height (can be set up to 5000)
-    local autoHideHiding = false
+-- Consolidated state variables with extensive customization options
+local state = {
+    autoTrain = {
+        enabled = false,
+        conn = nil,
+        ignoreList = {},
+        delay = 0.1,  -- Delay (in seconds) between each tool activation
+    },
+    fastSlash = {
+        enabled = false,
+        conn = nil,
+        delay = 0.05,  -- Delay between each slash activation
+    },
+    autoFarmHonorConn = nil,
+    aimbot = {
+         enabled = false,
+         conn = nil,
+         mode = "Lowest Health",          -- Options: "Lowest Health", "Closest Player"
+         targetPart = "Head",               -- Options: "Head", "Torso", "HumanoidRootPart"
+         smoothness = 0.5,                  -- Lerp factor (0.1 = snappy, 1 = smooth)
+         instantSnap = false,               -- If true, bypass smoothing (instant snap)
+         fov = 90,                        -- Field-of-View radius in pixels
+         fovEnabled = false,                -- Enable FOV filtering
+         healthCheck = true,                -- Only target enemies with lower health than yours
+    },
+    oldPos = nil,
+    oldGravity = WS.Gravity,
+    safeZonePart = nil,
+    oldSafeZonePos = nil,
+    farmMode = "Lowest Health",             -- For Auto Farm Honor mode
+    teleportOffset = Vector3.new(0, -3.5, 0),
+    smoothTeleport = false,
+    teleportSpeed = 0.2,
+    swordSize = Vector3.new(1, 1, 1)
+}
 
-    -- Avoid Hackers Teleport parameters
-    local avoidDetectionRange = 10    -- If any enemy gets within this many studs
-    local avoidDistance = 1000        -- Teleport away by this distance instantly
+-- Helper function to get the local character
+local function getChar()
+    return lp.Character or lp.CharacterAdded:Wait()
+end
 
-    -- Create Farm Tab
-    local FarmTab = win:CreateTab("Farm", 4483362458)
+-- Unified teleport function (supports smooth teleporting if enabled)
+local function teleport(part, targetCFrame)
+    if not part then return end
+    if state.smoothTeleport then
+        local tween = TS:Create(part, TweenInfo.new(state.teleportSpeed, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
+        tween:Play() 
+        tween.Completed:Wait()
+    else
+        part.CFrame = targetCFrame
+    end
+end
 
-    -- Auto Train Toggle
-    FarmTab:CreateToggle({
-        Name = "Auto Train",
-        CurrentValue = false,
-        Flag = "Toggle_AutoTrain",
-        Callback = function(enabled)
-            local char = lp.Character or lp.CharacterAdded:Wait()
-            if enabled then
-                autoTrainCon = rs.RenderStepped:Connect(function()
-                    for _, tool in ipairs(char:GetChildren()) do
-                        if tool:IsA("Tool") then
-                            pcall(tool.Activate, tool)
+-- Get Best Enemy for Auto Farm Honor (using chosen farmMode)
+local function getBestEnemy()
+    local char = getChar()
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local myHum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not myHum then return end
+    local best, bestVal1, bestVal2 = nil, math.huge, math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= lp and p.Character and p.Team and p.Team ~= lp.Team and p.Team.Name ~= "Neutral" then
+            local eHum = p.Character:FindFirstChildOfClass("Humanoid")
+            local eHrp = p.Character:FindFirstChild("HumanoidRootPart")
+            if eHrp and eHum and eHum.Health > 0 and eHum.Health < myHum.Health then
+                local dist = (hrp.Position - eHrp.Position).Magnitude
+                if state.farmMode == "Closest Player" and dist < bestVal2 then
+                    bestVal2, best = dist, p
+                elseif state.farmMode == "Lowest Health" and eHum.Health < bestVal1 then
+                    bestVal1, bestVal2, best = eHum.Health, dist, p
+                end
+            end
+        end
+    end
+    return best
+end
+
+-- Get Aimbot Target with extra customization (FOV filtering, health check, etc.)
+local function getAimbotTarget()
+    local cam = WS.CurrentCamera
+    local myChar = getChar()
+    local hrp = myChar:FindFirstChild("HumanoidRootPart")
+    local myHum = myChar:FindFirstChildOfClass("Humanoid")
+    if not cam or not hrp or not myHum then return end
+
+    local best, bestScore = nil, math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= lp and p.Character and p.Team and p.Team ~= lp.Team and p.Team.Name ~= "Neutral" then
+            local eHum = p.Character:FindFirstChildOfClass("Humanoid")
+            local eHrp = p.Character:FindFirstChild("HumanoidRootPart")
+            if eHum and eHum.Health > 0 and eHrp then
+                if state.aimbot.healthCheck and eHum.Health >= myHum.Health then
+                    -- Skip enemy if health check fails
+                else
+                    local targetPart = p.Character:FindFirstChild(state.aimbot.targetPart) or eHrp
+                    if targetPart then
+                        if state.aimbot.fovEnabled then
+                            local screenPos, onScreen = cam:WorldToViewportPoint(targetPart.Position)
+                            if not onScreen then
+                                -- Skip if offscreen
+                            else
+                                local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+                                local distFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                                if distFromCenter > state.aimbot.fov then
+                                    -- Skip if outside desired FOV radius
+                                else
+                                    local score = (state.aimbot.mode == "Closest Player") and ((hrp.Position - eHrp.Position).Magnitude) or (eHum.Health)
+                                    if score < bestScore then
+                                        bestScore = score
+                                        best = p
+                                    end
+                                end
+                            end
+                        else
+                            local score = (state.aimbot.mode == "Closest Player") and ((hrp.Position - eHrp.Position).Magnitude) or (eHum.Health)
+                            if score < bestScore then
+                                bestScore = score
+                                best = p
+                            end
                         end
                     end
-                end)
-            else
-                if autoTrainCon then autoTrainCon:Disconnect() autoTrainCon = nil end
+                end
             end
-        end,
-    })
+        end
+    end
+    return best
+end
 
-    -- Fast Slash Toggle
-    FarmTab:CreateToggle({
-        Name = "Fast Slash",
-        CurrentValue = false,
-        Flag = "Toggle_FastSlash",
-        Callback = function(enabled)
-            local char = lp.Character or lp.CharacterAdded:Wait()
-            if enabled then
-                fastSlashCon = rs.RenderStepped:Connect(function()
+-- Update a tool's handle size if it exists
+local function updateTool(tool)
+    if tool:IsA("Tool") then
+        local h = tool:FindFirstChild("Handle")
+        if h then h.Size = state.swordSize end
+    end
+end
+
+-- Update all tools (both in Backpack & Character)
+local function updateAllTools()
+    local char = getChar()
+    for _, tool in ipairs(lp.Backpack:GetChildren()) do updateTool(tool) end
+    for _, tool in ipairs(char:GetChildren()) do updateTool(tool) end
+end
+
+spawn(function() while wait(0.5) do updateAllTools() end end)
+lp.Backpack.ChildAdded:Connect(updateTool)
+lp.CharacterAdded:Connect(function(c) c.ChildAdded:Connect(updateTool); updateAllTools() end)
+
+-- Utility: Returns a list of tool names from Backpack & Character (unique)
+local function getToolNames()
+    local names = {}
+    local seen = {}
+    local function addTool(tool)
+        if tool:IsA("Tool") and not seen[tool.Name] then
+            table.insert(names, tool.Name)
+            seen[tool.Name] = true
+        end
+    end
+    local char = getChar()
+    for _, tool in ipairs(lp.Backpack:GetChildren()) do
+        addTool(tool)
+    end
+    for _, tool in ipairs(char:GetChildren()) do
+        addTool(tool)
+    end
+    return names
+end
+
+-- Create UI Tabs
+local FarmTab = win:CreateTab("Farm", 4483362458)
+local UtilTab = win:CreateTab("Utility", 4483362458)
+
+--------------------------------------------------
+-- Farm Tab: Toggles & Customizable Options
+--------------------------------------------------
+
+-- Auto Train Toggle with extra options
+FarmTab:CreateToggle({
+    Name = "Auto Train",
+    CurrentValue = false,
+    Flag = "Toggle_AutoTrain",
+    Callback = function(enabled)
+        state.autoTrain.enabled = enabled
+        if enabled then
+            state.autoTrain.conn = spawn(function()
+                while state.autoTrain.enabled do
+                    local char = getChar()
+                    for _, tool in ipairs(char:GetChildren()) do
+                        if tool:IsA("Tool") then
+                            local ignore = false
+                            for _, ignoreName in ipairs(state.autoTrain.ignoreList) do
+                                if tool.Name:lower() == ignoreName:lower() then
+                                    ignore = true
+                                    break
+                                end
+                            end
+                            if not ignore then
+                                pcall(tool.Activate, tool)
+                            end
+                        end
+                    end
+                    wait(state.autoTrain.delay)
+                end
+            end)
+        else
+            state.autoTrain.conn = nil
+        end
+    end
+})
+
+-- Multi-select Dropdown for Auto Train Ignore Tools (lists tools in your Backpack & Character)
+local autoTrainIgnoreDropdown = FarmTab:CreateDropdown({
+    Name = "Auto Train Ignore Tools",
+    Options = getToolNames(),
+    Multi = true,
+    CurrentOption = {},
+    Flag = "Dropdown_AutoTrainIgnore",
+    Callback = function(selected)
+        state.autoTrain.ignoreList = selected or {}
+    end
+})
+
+-- Button to refresh the list of available tools in the Auto Train dropdown
+FarmTab:CreateButton({
+    Name = "Refresh Auto Train Tools",
+    Callback = function()
+        local options = getToolNames()
+        if autoTrainIgnoreDropdown and autoTrainIgnoreDropdown.SetOptions then
+            autoTrainIgnoreDropdown:SetOptions(options)
+        end
+    end
+})
+
+-- Slider to adjust Auto Train delay
+FarmTab:CreateSlider({
+    Name = "Auto Train Delay",
+    Range = {0.05, 1},
+    Increment = 0.05,
+    Suffix = " sec",
+    CurrentValue = state.autoTrain.delay,
+    Flag = "Slider_AutoTrainDelay",
+    Callback = function(val)
+        state.autoTrain.delay = val
+    end
+})
+
+-- Fast Slash Toggle with adjustable delay
+FarmTab:CreateToggle({
+    Name = "Fast Slash",
+    CurrentValue = false,
+    Flag = "Toggle_FastSlash",
+    Callback = function(enabled)
+        state.fastSlash.enabled = enabled
+        if enabled then
+            state.fastSlash.conn = spawn(function()
+                while state.fastSlash.enabled do
+                    local char = getChar()
                     for _, tool in ipairs(char:GetChildren()) do
                         if tool:IsA("Tool") then
                             pcall(function() tool.Enabled = true end)
                         end
                     end
-                end)
-            else
-                if fastSlashCon then fastSlashCon:Disconnect() fastSlashCon = nil end
-            end
-        end,
-    })
-
-    -- Smooth Teleport helper (for Auto Farm Honor)
-    local function smoothTeleportTo(part, targetCFrame)
-        if not part then return end
-        local startCFrame = part.CFrame
-        local elapsed = 0
-        while elapsed < teleportSpeed do
-            local alpha = elapsed / teleportSpeed
-            part.CFrame = startCFrame:Lerp(targetCFrame, alpha)
-            elapsed = elapsed + rs.RenderStepped:Wait()
+                    wait(state.fastSlash.delay)
+                end
+            end)
+        else
+            state.fastSlash.conn = nil
         end
-        part.CFrame = targetCFrame
     end
+})
 
-    -- Improved enemy selection for Auto Farm Honor
-    local function getBestEnemy()
-        local bestTarget, bestHealth, bestDistance = nil, math.huge, math.huge
-        local myChar = lp.Character
-        if not myChar then return nil end
-        local myHumanoid = myChar:FindFirstChildOfClass("Humanoid")
-        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-        if not myHumanoid or not myHRP then return nil end
-        local myHealth = myHumanoid.Health
+-- Slider to adjust Fast Slash delay
+FarmTab:CreateSlider({
+    Name = "Fast Slash Delay",
+    Range = {0.01, 1},
+    Increment = 0.01,
+    Suffix = " sec",
+    CurrentValue = state.fastSlash.delay,
+    Flag = "Slider_FastSlashDelay",
+    Callback = function(val)
+        state.fastSlash.delay = val
+    end
+})
 
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= lp and player.Team ~= lp.Team and player.Character then
-                local enemyHRP = player.Character:FindFirstChild("HumanoidRootPart")
-                local enemyHumanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                if enemyHRP and enemyHumanoid and enemyHumanoid.Health > 0 then
-                    local distance = (myHRP.Position - enemyHRP.Position).Magnitude
-                    if farmMode == "Closest Player" then
-                        if distance < bestDistance then
-                            bestDistance = distance
-                            bestTarget = player
-                        end
-                    elseif farmMode == "Lowest Health" then
-                        local enemyHealth = enemyHumanoid.Health
-                        if enemyHealth < bestHealth or (enemyHealth >= myHealth and bestHealth >= myHealth) then
-                            bestHealth = enemyHealth
-                            bestDistance = distance
-                            bestTarget = player
+-- Auto Farm Honor Toggle (with gravity & PlatformStand handling)
+FarmTab:CreateToggle({
+    Name = "Auto Farm Honor",
+    CurrentValue = false,
+    Flag = "Toggle_AutoFarmHonor",
+    Callback = function(enabled)
+        local char = getChar()
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not hum then return end
+        if enabled then
+            state.oldPos = hrp.Position
+            state.oldGravity = WS.Gravity
+            WS.Gravity = 0
+            hum.PlatformStand = true
+            state.autoFarmHonorConn = RS.RenderStepped:Connect(function()
+                local target = getBestEnemy()
+                if target and target.Character then
+                    local eHrp = target.Character:FindFirstChild("HumanoidRootPart")
+                    if eHrp then teleport(hrp, eHrp.CFrame * CFrame.new(state.teleportOffset)) end
+                end
+            end)
+        else
+            if state.autoFarmHonorConn then state.autoFarmHonorConn:Disconnect() end
+            state.autoFarmHonorConn = nil
+            WS.Gravity = state.oldGravity or 196.2
+            hum.PlatformStand = false
+            if state.oldPos then teleport(hrp, CFrame.new(state.oldPos)) end
+        end
+    end
+})
+
+-- Aimbot Toggle with extensive customization including "Instant Snap"
+FarmTab:CreateToggle({
+    Name = "Aimbot",
+    CurrentValue = false,
+    Flag = "Toggle_Aimbot",
+    Callback = function(enabled)
+        if enabled then
+            state.aimbot.enabled = true
+            state.aimbot.conn = RS.RenderStepped:Connect(function()
+                local cam = WS.CurrentCamera
+                if not cam then return end
+                local target = getAimbotTarget()
+                if target and target.Character then
+                    local targetPart = target.Character:FindFirstChild(state.aimbot.targetPart) or target.Character:FindFirstChild("HumanoidRootPart")
+                    if targetPart then
+                        local desiredCFrame = CFrame.new(cam.CFrame.Position, targetPart.Position)
+                        if state.aimbot.instantSnap then
+                            cam.CFrame = desiredCFrame
+                        else
+                            cam.CFrame = cam.CFrame:Lerp(desiredCFrame, state.aimbot.smoothness)
                         end
                     end
                 end
+            end)
+        else
+            state.aimbot.enabled = false
+            if state.aimbot.conn then
+                state.aimbot.conn:Disconnect()
+                state.aimbot.conn = nil
             end
         end
-        return bestTarget
     end
+})
 
-    -- Auto Farm Honor Toggle
-    FarmTab:CreateToggle({
-        Name = "Auto Farm Honor",
-        CurrentValue = false,
-        Flag = "Toggle_AutoFarmHonor",
-        Callback = function(enabled)
-            local char = lp.Character
-            if not char then return end
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-            if enabled then
-                oldPosition = hrp.Position
-                autoFarmHonorCon = rs.RenderStepped:Connect(function()
-                    local target = getBestEnemy()
-                    if target and target.Character then
-                        local enemyHRP = target.Character:FindFirstChild("HumanoidRootPart")
-                        if enemyHRP then
-                            local targetCFrame = enemyHRP.CFrame * CFrame.new(teleportOffset.X, teleportOffset.Y, teleportOffset.Z)
-                            if smoothTeleport then
-                                smoothTeleportTo(hrp, targetCFrame)
-                            else
-                                hrp.CFrame = targetCFrame
-                            end
-                        end
-                    end
-                end)
-            else
-                if autoFarmHonorCon then autoFarmHonorCon:Disconnect() autoFarmHonorCon = nil end
-                if oldPosition then
-                    if smoothTeleport then
-                        smoothTeleportTo(hrp, CFrame.new(oldPosition))
-                    else
-                        hrp.CFrame = CFrame.new(oldPosition)
-                    end
-                end
-            end
-        end,
-    })
+-- Dropdown to choose Aimbot mode (Lowest Health / Closest Player)
+FarmTab:CreateDropdown({
+    Name = "Aimbot Mode",
+    Options = {"Lowest Health", "Closest Player"},
+    CurrentOption = state.aimbot.mode,
+    Flag = "Dropdown_AimbotMode",
+    Callback = function(option)
+        state.aimbot.mode = option
+    end
+})
 
-    -- Farm Mode Dropdown
-    FarmTab:CreateDropdown({
-        Name = "Farm Mode",
-        Options = {"Lowest Health", "Closest Player"},
-        CurrentOption = "Lowest Health",
-        Flag = "Dropdown_FarmMode",
-        Callback = function(option) farmMode = option end,
-    })
+-- Dropdown to select the target part for Aimbot
+FarmTab:CreateDropdown({
+    Name = "Aimbot Target Part",
+    Options = {"Head", "Torso", "HumanoidRootPart"},
+    CurrentOption = state.aimbot.targetPart,
+    Flag = "Dropdown_AimbotTargetPart",
+    Callback = function(option)
+        state.aimbot.targetPart = option
+    end
+})
 
-    -- Teleport Offset Y Slider (for Auto Farm Honor)
-    FarmTab:CreateSlider({
-        Name = "Teleport Offset Y",
-        Range = {-10, 10},
-        Increment = 0.5,
-        Suffix = " studs",
-        CurrentValue = teleportOffset.Y,
-        Flag = "Slider_TeleportOffset",
-        Callback = function(value)
-            teleportOffset = Vector3.new(teleportOffset.X, value, teleportOffset.Z)
-        end,
-    })
+-- Slider to adjust Aimbot smoothness
+FarmTab:CreateSlider({
+    Name = "Aimbot Smoothness",
+    Range = {0.1, 1},
+    Increment = 0.1,
+    Suffix = "",
+    CurrentValue = state.aimbot.smoothness,
+    Flag = "Slider_AimbotSmoothness",
+    Callback = function(val)
+        state.aimbot.smoothness = val
+    end
+})
 
-    -- Smooth Teleport Toggle
-    FarmTab:CreateToggle({
-        Name = "Smooth Teleport",
-        CurrentValue = false,
-        Flag = "Toggle_SmoothTeleport",
-        Callback = function(enabled) smoothTeleport = enabled end,
-    })
+-- Toggle to instantly snap the Aimbot (bypasses smooth interpolation)
+FarmTab:CreateToggle({
+    Name = "Instant Aimbot Snap",
+    CurrentValue = state.aimbot.instantSnap,
+    Flag = "Toggle_AimbotInstantSnap",
+    Callback = function(enabled)
+        state.aimbot.instantSnap = enabled
+    end
+})
 
-    -- Teleport Speed Slider
-    FarmTab:CreateSlider({
-        Name = "Teleport Speed",
-        Range = {0.1, 2},
-        Increment = 0.1,
-        Suffix = " sec",
-        CurrentValue = teleportSpeed,
-        Flag = "Slider_TeleportSpeed",
-        Callback = function(value) teleportSpeed = value end,
-    })
+-- Toggle for Aimbot FOV filtering
+FarmTab:CreateToggle({
+    Name = "Aimbot FOV Enabled",
+    CurrentValue = state.aimbot.fovEnabled,
+    Flag = "Toggle_AimbotFOV",
+    Callback = function(enabled)
+        state.aimbot.fovEnabled = enabled
+    end
+})
 
-    -- Sword Reach Slider
-    FarmTab:CreateSlider({
-        Name = "Sword Reach",
-        Range = {1, 90},
-        Increment = 1,
-        Suffix = " studs",
-        CurrentValue = 1,
-        Flag = "Slider_SwordReach",
-        Callback = function(value)
-            swordSize = Vector3.new(value, value, value)
-            for _, tool in ipairs(lp.Backpack:GetChildren()) do
-                if tool:IsA("Tool") then
-                    local handle = tool:FindFirstChild("Handle")
-                    if handle then handle.Size = swordSize end
-                end
-            end
-            for _, tool in ipairs(lp.Character:GetChildren()) do
-                if tool:IsA("Tool") then
-                    local handle = tool:FindFirstChild("Handle")
-                    if handle then handle.Size = swordSize end
-                end
-            end
-        end,
-    })
+-- Slider for setting Aimbot FOV radius (in pixels)
+FarmTab:CreateSlider({
+    Name = "Aimbot FOV",
+    Range = {10, 300},
+    Increment = 5,
+    Suffix = " pixels",
+    CurrentValue = state.aimbot.fov,
+    Flag = "Slider_AimbotFOV",
+    Callback = function(val)
+        state.aimbot.fov = val
+    end
+})
 
-    -- Auto Equip Tools Toggle
-    FarmTab:CreateToggle({
-        Name = "Auto Equip Tools",
-        CurrentValue = false,
-        Flag = "Toggle_AutoEquip",
-        Callback = function(enabled)
-            local char = lp.Character or lp.CharacterAdded:Wait()
-            if enabled then
-                autoEquipCon = rs.RenderStepped:Connect(function()
-                    for _, tool in ipairs(lp.Backpack:GetChildren()) do
-                        if tool:IsA("Tool") then
-                            pcall(function() tool.Parent = char end)
-                        end
-                    end
-                end)
-            else
-                if autoEquipCon then autoEquipCon:Disconnect() autoEquipCon = nil end
-            end
-        end,
-    })
+-- Toggle for Aimbot Health Check (target only enemies with lower health than you)
+FarmTab:CreateToggle({
+    Name = "Aimbot Health Check (target only enemies with lower health than you)",
+    CurrentValue = state.aimbot.healthCheck,
+    Flag = "Toggle_AimbotHealthCheck",
+    Callback = function(enabled)
+        state.aimbot.healthCheck = enabled
+    end
+})
 
-    -- Auto Hide Toggle
-    FarmTab:CreateToggle({
-        Name = "Auto Hide",
-        CurrentValue = false,
-        Flag = "Toggle_AutoHide",
-        Callback = function(enabled)
-            local char = lp.Character or lp.CharacterAdded:Wait()
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-            if enabled then
-                oldPosition = hrp.Position
-                autoHideCon = rs.RenderStepped:Connect(function()
-                    local threat = false
-                    local myHumanoid = char:FindFirstChildOfClass("Humanoid")
-                    if not myHumanoid then return end
-                    local myHealth = myHumanoid.Health
-                    for _, player in ipairs(Players:GetPlayers()) do
-                        if player ~= lp and player.Team ~= lp.Team and player.Character then
-                            local enemyHRP = player.Character:FindFirstChild("HumanoidRootPart")
-                            local enemyHumanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                            if enemyHRP and enemyHumanoid and enemyHumanoid.Health > myHealth then
-                                local enemyPos = enemyHRP.Position
-                                local horizDist = (Vector3.new(enemyPos.X, 0, enemyPos.Z) - Vector3.new(oldPosition.X, 0, oldPosition.Z)).Magnitude
-                                if horizDist < hideDetectionRange then
-                                    threat = true
-                                    break
-                                end
-                            end
-                        end
-                    end
-                    if threat then
-                        if not autoHideHiding then
-                            autoHideHiding = true
-                            if not hrp:FindFirstChild("AutoHideBP") then
-                                local bp = Instance.new("BodyPosition")
-                                bp.Name = "AutoHideBP"
-                                bp.Position = oldPosition + Vector3.new(0, hideHeight, 0)
-                                bp.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                                bp.P = 1e4
-                                bp.Parent = hrp
-                            end
-                        end
-                    else
-                        if autoHideHiding then
-                            autoHideHiding = false
-                            if hrp:FindFirstChild("AutoHideBP") then
-                                hrp.AutoHideBP:Destroy()
-                            end
-                            hrp.CFrame = CFrame.new(oldPosition)
-                        end
-                    end
-                end)
-            else
-                if autoHideCon then autoHideCon:Disconnect() autoHideCon = nil end
-                if autoHideHiding and hrp:FindFirstChild("AutoHideBP") then
-                    hrp.AutoHideBP:Destroy()
-                    autoHideHiding = false
-                    hrp.CFrame = CFrame.new(oldPosition)
-                end
-            end
-        end,
-    })
+-- Dropdown to choose Farm Mode (for Auto Farm Honor)
+FarmTab:CreateDropdown({
+    Name = "Farm Mode",
+    Options = {"Lowest Health", "Closest Player"},
+    CurrentOption = state.farmMode,
+    Flag = "Dropdown_FarmMode",
+    Callback = function(option)
+        state.farmMode = option
+    end
+})
 
-    -- Hide Detection Range Slider (Auto Hide)
-    FarmTab:CreateSlider({
-        Name = "Hide Detection Range",
-        Range = {10, 200},
-        Increment = 1,
-        Suffix = " studs",
-        CurrentValue = hideDetectionRange,
-        Flag = "Slider_HideDetectionRange",
-        Callback = function(value) hideDetectionRange = value end,
-    })
+-- Slider to adjust Teleport Offset Y
+FarmTab:CreateSlider({
+    Name = "Teleport Offset Y",
+    Range = {-15, 10},
+    Increment = 0.5,
+    Suffix = " studs",
+    CurrentValue = -15,
+    Flag = "Slider_TeleportOffset",
+    Callback = function(val)
+        state.teleportOffset = Vector3.new(state.teleportOffset.X, val, state.teleportOffset.Z)
+    end
+})
 
-    -- Hide Height Slider (Auto Hide, now from 1000 to 5000)
-    FarmTab:CreateSlider({
-        Name = "Hide Height",
-        Range = {1000, 5000},
-        Increment = 10,
-        Suffix = " studs",
-        CurrentValue = hideHeight,
-        Flag = "Slider_HideHeight",
-        Callback = function(value) hideHeight = value end,
-    })
+-- Toggle for Smooth Teleport
+FarmTab:CreateToggle({
+    Name = "Smooth Teleport",
+    CurrentValue = state.smoothTeleport,
+    Flag = "Toggle_SmoothTeleport",
+    Callback = function(enabled)
+        state.smoothTeleport = enabled
+    end
+})
 
-    -- Avoid Hackers Teleport Toggle
-    FarmTab:CreateToggle({
-        Name = "Avoid Hackers Teleport",
-        CurrentValue = false,
-        Flag = "Toggle_AvoidHackers",
-        Callback = function(enabled)
-            local char = lp.Character or lp.CharacterAdded:Wait()
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-            if enabled then
-                avoidHackersCon = rs.RenderStepped:Connect(function()
-                    for _, player in ipairs(Players:GetPlayers()) do
-                        if player ~= lp and player.Team ~= lp.Team and player.Character then
-                            local enemyHRP = player.Character:FindFirstChild("HumanoidRootPart")
-                            if enemyHRP then
-                                local dist = (hrp.Position - enemyHRP.Position).Magnitude
-                                if dist < avoidDetectionRange then
-                                    local awayDir = (hrp.Position - enemyHRP.Position).Unit
-                                    local newPos = hrp.Position + awayDir * avoidDistance
-                                    hrp.CFrame = CFrame.new(newPos)
-                                    break
-                                end
-                            end
-                        end
-                    end
-                end)
-            else
-                if avoidHackersCon then avoidHackersCon:Disconnect() avoidHackersCon = nil end
-            end
-        end,
-    })
+-- Slider to adjust Teleport Speed
+FarmTab:CreateSlider({
+    Name = "Teleport Speed",
+    Range = {0.1, 2},
+    Increment = 0.1,
+    Suffix = " sec",
+    CurrentValue = state.teleportSpeed,
+    Flag = "Slider_TeleportSpeed",
+    Callback = function(val)
+        state.teleportSpeed = val
+    end
+})
 
-    -- Avoid Detection Range Slider (for Avoid Hackers)
-    FarmTab:CreateSlider({
-        Name = "Avoid Detection Range",
-        Range = {5, 50},
-        Increment = 1,
-        Suffix = " studs",
-        CurrentValue = avoidDetectionRange,
-        Flag = "Slider_AvoidDetection",
-        Callback = function(value) avoidDetectionRange = value end,
-    })
+-- Slider to adjust Sword Reach (handle size)
+FarmTab:CreateSlider({
+    Name = "Sword Reach",
+    Range = {1, 90},
+    Increment = 1,
+    Suffix = " studs",
+    CurrentValue = 15,
+    Flag = "Slider_SwordReach",
+    Callback = function(val)
+        state.swordSize = Vector3.new(val, val, val)
+        updateAllTools()
+    end
+})
 
-    -- Avoid Distance Slider (for Avoid Hackers)
-    FarmTab:CreateSlider({
-        Name = "Avoid Distance",
-        Range = {1000, 5000},
-        Increment = 10,
-        Suffix = " studs",
-        CurrentValue = avoidDistance,
-        Flag = "Slider_AvoidDistance",
-        Callback = function(value) avoidDistance = value end,
-    })
+--------------------------------------------------
+-- Utility Tab: Additional Toggles
+--------------------------------------------------
 
-    -- Load configuration
-    win:LoadConfiguration()
-end
+-- Safe Zone Toggle (moves you to a safe zone)
+UtilTab:CreateToggle({
+    Name = "Safe Zone",
+    CurrentValue = false,
+    Flag = "Toggle_SafeZone",
+    Callback = function(enabled)
+        local char = getChar()
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        if enabled then
+            state.oldSafeZonePos = hrp.Position
+            state.safeZonePart = Instance.new("Part")
+            state.safeZonePart.Size = Vector3.new(50, 1, 50)
+            state.safeZonePart.Anchored = true
+            state.safeZonePart.CanCollide = true
+            state.safeZonePart.Position = hrp.Position + Vector3.new(1000, 1000, 1000)
+            state.safeZonePart.Parent = WS
+            teleport(hrp, state.safeZonePart.CFrame + Vector3.new(0, 7, 0))
+        else
+            if state.oldSafeZonePos then teleport(hrp, CFrame.new(state.oldSafeZonePos)) end
+            if state.safeZonePart then state.safeZonePart:Destroy() end
+        end
+    end
+})
