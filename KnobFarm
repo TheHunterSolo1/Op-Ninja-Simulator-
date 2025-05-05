@@ -1,0 +1,104 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+local GameData = ReplicatedStorage:WaitForChild("GameData")
+local CurrentRooms = Workspace:WaitForChild("CurrentRooms")
+local RemotesFolder = ReplicatedStorage:WaitForChild("RemotesFolder")
+local PlayAgainRemote = RemotesFolder:WaitForChild("PlayAgain")
+
+-- GUI for stop button
+local gui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+gui.Name = "KnobFarmGui"
+local stop = Instance.new("TextButton", gui)
+stop.Size = UDim2.new(0, 150, 0, 50)
+stop.Position = UDim2.new(0, 10, 0, 10)
+stop.BackgroundColor3 = Color3.new(1, 0.4, 0.4)
+stop.Text = "Stop Knob Farm"
+stop.Font = Enum.Font.SourceSansBold
+stop.TextScaled = true
+
+local running = true
+stop.MouseButton1Click:Connect(function()
+	running = false
+	gui:Destroy()
+end)
+
+-- BFS to find target
+local function bfsFind(root, targetName)
+	local queue = {root}
+	local index = 1
+	while index <= #queue do
+		local current = queue[index]
+		if current.Name == targetName and current:IsA("Model") then
+			if current:FindFirstChildWhichIsA("BasePart") then
+				return current
+			end
+		end
+		for _, child in ipairs(current:GetChildren()) do
+			table.insert(queue, child)
+		end
+		index += 1
+	end
+	return nil
+end
+
+local function firePrompt(model)
+	for _, obj in ipairs(model:GetDescendants()) do
+		if obj:IsA("ProximityPrompt") then
+			fireproximityprompt(obj)
+		end
+	end
+end
+
+local function teleportTo(part)
+	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if root and part then
+		root.CFrame = part.CFrame + Vector3.new(0, 3, 0)
+	end
+end
+
+local function hasKey()
+	local char = LocalPlayer.Character
+	return (char and char:FindFirstChild("Key")) or LocalPlayer.Backpack:FindFirstChild("Key")
+end
+
+-- Main farming loop
+task.spawn(function()
+	while running do
+		local room = CurrentRooms:FindFirstChild(GameData.LatestRoom.Value)
+		if room then
+			local key = bfsFind(room, "KeyObtain")
+			local door = bfsFind(room, "Door")
+
+			if not hasKey() then
+				if key then
+					firePrompt(key)
+					teleportTo(key.PrimaryPart or key:FindFirstChildWhichIsA("BasePart"))
+				elseif door then
+					teleportTo(door:FindFirstChild("Door") or door.PrimaryPart or door:FindFirstChildWhichIsA("BasePart"))
+				end
+			elseif door then
+				firePrompt(door)
+				teleportTo(door:FindFirstChild("Door") or door.PrimaryPart or door:FindFirstChildWhichIsA("BasePart"))
+			end
+		end
+
+		if Humanoid.Health <= 0 then
+			repeat task.wait(0.25) until Workspace:FindFirstChild("RushMoving")
+			local rush = Workspace:FindFirstChild("RushMoving")
+			if rush and rush:FindFirstChildWhichIsA("BasePart") then
+				teleportTo(rush:FindFirstChildWhichIsA("BasePart"))
+			end
+			task.wait(1)
+			PlayAgainRemote:FireServer()
+		end
+
+		task.wait(0.25)
+	end
+end)
