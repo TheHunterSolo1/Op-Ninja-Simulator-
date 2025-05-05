@@ -1,104 +1,137 @@
-local Players = game:GetService("Players")
+-- Services
+local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
+local RunService        = game:GetService("RunService")
+local Workspace         = game:GetService("Workspace")
 
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-
-local GameData = ReplicatedStorage:WaitForChild("GameData")
-local CurrentRooms = Workspace:WaitForChild("CurrentRooms")
-local RemotesFolder = ReplicatedStorage:WaitForChild("RemotesFolder")
+-- Locals
+local LocalPlayer     = Players.LocalPlayer
+local GameData        = ReplicatedStorage:WaitForChild("GameData")
+local CurrentRooms    = Workspace:WaitForChild("CurrentRooms")
+local RemotesFolder   = ReplicatedStorage:WaitForChild("RemotesFolder")
 local PlayAgainRemote = RemotesFolder:WaitForChild("PlayAgain")
 
--- GUI for stop button
+-- State
+local running, hrp, humanoid, rushFound = true, nil, nil, false
+
+-- GUI STOP BUTTON
 local gui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 gui.Name = "KnobFarmGui"
-local stop = Instance.new("TextButton", gui)
-stop.Size = UDim2.new(0, 150, 0, 50)
-stop.Position = UDim2.new(0, 10, 0, 10)
-stop.BackgroundColor3 = Color3.new(1, 0.4, 0.4)
-stop.Text = "Stop Knob Farm"
-stop.Font = Enum.Font.SourceSansBold
-stop.TextScaled = true
-
-local running = true
-stop.MouseButton1Click:Connect(function()
-	running = false
-	gui:Destroy()
+local stopBtn = Instance.new("TextButton", gui)
+stopBtn.Size = UDim2.new(0,150,0,50)
+stopBtn.Position = UDim2.new(0,10,0,10)
+stopBtn.BackgroundColor3 = Color3.fromRGB(255,64,64)
+stopBtn.Font = Enum.Font.SourceSansBold
+stopBtn.TextScaled = true
+stopBtn.Text = "Stop KnobFarm"
+stopBtn.MouseButton1Click:Connect(function()
+    running = false
+    gui:Destroy()
 end)
 
--- BFS to find target
-local function bfsFind(root, targetName)
-	local queue = {root}
-	local index = 1
-	while index <= #queue do
-		local current = queue[index]
-		if current.Name == targetName and current:IsA("Model") then
-			if current:FindFirstChildWhichIsA("BasePart") then
-				return current
-			end
-		end
-		for _, child in ipairs(current:GetChildren()) do
-			table.insert(queue, child)
-		end
-		index += 1
-	end
-	return nil
+-- BFS finder under a root for a Model named targetName
+local function bfsFindModel(root, targetName)
+    local queue = { root }
+    local idx = 1
+    while idx <= #queue do
+        local node = queue[idx]
+        idx += 1
+        if node:IsA("Model") and node.Name == targetName then
+            return node
+        end
+        for _, child in ipairs(node:GetChildren()) do
+            queue[#queue+1] = child
+        end
+    end
+    return nil
 end
 
-local function firePrompt(model)
-	for _, obj in ipairs(model:GetDescendants()) do
-		if obj:IsA("ProximityPrompt") then
-			fireproximityprompt(obj)
-		end
-	end
+-- BFS finder under a root for a ProximityPrompt
+local function bfsFindPrompt(root)
+    local queue = { root }
+    local idx = 1
+    while idx <= #queue do
+        local node = queue[idx]
+        idx += 1
+        if node:IsA("ProximityPrompt") then
+            return node
+        end
+        for _, child in ipairs(node:GetChildren()) do
+            queue[#queue+1] = child
+        end
+    end
+    return nil
 end
 
+-- Fire a prompt with custom helper
+local function firePrompt(prompt)
+    if not prompt then return end
+    prompt:InputHoldBegin()
+    task.wait(prompt.HoldDuration or 0)
+    prompt:InputHoldEnd()
+end
+
+-- Teleport HRP to part
 local function teleportTo(part)
-	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-	if root and part then
-		root.CFrame = part.CFrame + Vector3.new(0, 3, 0)
-	end
+    if hrp and part and part:IsA("BasePart") then
+        hrp.CFrame = part.CFrame + Vector3.new(0,3,0)
+    end
 end
 
+-- Check if player has Key
 local function hasKey()
-	local char = LocalPlayer.Character
-	return (char and char:FindFirstChild("Key")) or LocalPlayer.Backpack:FindFirstChild("Key")
+    local c = LocalPlayer.Character
+    return (c and c:FindFirstChild("Key")) or LocalPlayer.Backpack:FindFirstChild("Key")
 end
 
--- Main farming loop
-task.spawn(function()
-	while running do
-		local room = CurrentRooms:FindFirstChild(GameData.LatestRoom.Value)
-		if room then
-			local key = bfsFind(room, "KeyObtain")
-			local door = bfsFind(room, "Door")
+-- Refresh hrp & humanoid on respawn
+LocalPlayer.CharacterAdded:Connect(function(char)
+    hrp = char:WaitForChild("HumanoidRootPart")
+    humanoid = char:WaitForChild("Humanoid")
+    humanoid.Died:Connect(function()
+        PlayAgainRemote:FireServer()
+    end)
+end)
+if LocalPlayer.Character then
+    local char = LocalPlayer.Character
+    hrp = char:WaitForChild("HumanoidRootPart")
+    humanoid = char:WaitForChild("Humanoid")
+    humanoid.Died:Connect(function()
+        PlayAgainRemote:FireServer()
+    end)
+end
 
-			if not hasKey() then
-				if key then
-					firePrompt(key)
-					teleportTo(key.PrimaryPart or key:FindFirstChildWhichIsA("BasePart"))
-				elseif door then
-					teleportTo(door:FindFirstChild("Door") or door.PrimaryPart or door:FindFirstChildWhichIsA("BasePart"))
-				end
-			elseif door then
-				firePrompt(door)
-				teleportTo(door:FindFirstChild("Door") or door.PrimaryPart or door:FindFirstChildWhichIsA("BasePart"))
-			end
-		end
+-- Watch for RushMoving spawn and teleport immediately
+Workspace.ChildAdded:Connect(function(child)
+    if not running then return end
+    if child:IsA("Model") and child.Name == "RushMoving" then
+        rushFound = true
+        local part = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
+        teleportTo(part)
+    end
+end)
 
-		if Humanoid.Health <= 0 then
-			repeat task.wait(0.25) until Workspace:FindFirstChild("RushMoving")
-			local rush = Workspace:FindFirstChild("RushMoving")
-			if rush and rush:FindFirstChildWhichIsA("BasePart") then
-				teleportTo(rush:FindFirstChildWhichIsA("BasePart"))
-			end
-			task.wait(1)
-			PlayAgainRemote:FireServer()
-		end
+-- Main Heartbeat loop: farm keys and doors only if no RushMoving yet
+RunService.Heartbeat:Connect(function()
+    if not running or not hrp or rushFound then return end
 
-		task.wait(0.25)
-	end
+    local room = CurrentRooms:FindFirstChild(tostring(GameData.LatestRoom.Value))
+    if not room then return end
+
+    if not hasKey() then
+        local keyModel = bfsFindModel(room, "KeyObtain")
+        if keyModel and keyModel.PrimaryPart then
+            local prompt = bfsFindPrompt(keyModel)
+            firePrompt(prompt)
+            teleportTo(keyModel.PrimaryPart)
+        end
+    else
+        local doorModel = bfsFindModel(room, "Door")
+        if doorModel then
+            local doorPart = doorModel:FindFirstChild("Door") or doorModel.PrimaryPart
+            local prompt   = bfsFindPrompt(doorModel)
+            firePrompt(prompt)
+            teleportTo(doorPart)
+        end
+    end
 end)
