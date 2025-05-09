@@ -1,1 +1,31 @@
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
 
+local function createScreenGui()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "TeleportGui"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+
+    local teleportButton = Instance.new("TextButton")
+    teleportButton.Size = UDim2.new(0, 50, 0, 30) -- Smaller button
+    teleportButton.Position = UDim2.new(0, 10, 0.5, -15) -- Left side
+    teleportButton.Text = "Left"
+    teleportButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    teleportButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    teleportButton.Font = Enum.Font.GothamSemibold
+    teleportButton.TextSize = 14
+    teleportButton.Parent = screenGui
+
+    teleportButton.MouseButton1Click:Connect(function()
+        local character = localPlayer.Character
+        if character then
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                rootPart.CFrame = rootPart.CFrame * CFrame.new(-30, 0, 0)
+            end
+        end
+    end)
+end
+
+createScreenGui()
