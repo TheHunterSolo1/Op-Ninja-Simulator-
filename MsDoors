@@ -981,7 +981,7 @@ AutoBox:AddToggle("AutoInteract", {
                         if dist2 <= R2 then
                             if data.count < 10 then
                                 doPrompt(prompt)
-                                data.count += 1
+                                data.count = data.count  + 1
                             end
                         else
                             data.count = 0
@@ -992,17 +992,17 @@ AutoBox:AddToggle("AutoInteract", {
         end)
     end,
 })
-local RunService   = game:GetService("RunService")
-local CurrentRooms = workspace.CurrentRooms
-local GameData     = game.ReplicatedStorage.GameData
+ RunService   = game:GetService("RunService")
+ CurrentRooms = workspace.CurrentRooms
+ GameData     = game.ReplicatedStorage.GameData
 local Lighting     = game:GetService("Lighting")
 
 -- chunked scan: carve the work into 50-item chunks and yield each frame
-local function bindPromptModifier(room, modifierFunc)
+ function bindPromptModifier(room, modifierFunc)
     task.spawn(function()
-        local desc    = room:GetDescendants()
-        local total   = #desc
-        local chunkSz = 50
+         desc    = room:GetDescendants()
+         total   = #desc
+         chunkSz = 50
         for i = 1, total, chunkSz do
             for j = i, math.min(i + chunkSz - 1, total) do
                 local p = desc[j]
