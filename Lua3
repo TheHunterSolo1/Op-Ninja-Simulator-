@@ -6,7 +6,7 @@ ThemeManager = loadstring(game:HttpGet(repo..'addons/ThemeManager.lua'))()
 SaveManager  = loadstring(game:HttpGet(repo..'addons/SaveManager.lua'))()
 Options = Library.Options
 Toggles = Library.Toggles
-ESPLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/bocaj111004/ESPLibrary/refs/heads/main/main.lua"))() 
+ESPLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/bocaj111004/ESPLibrary/refs/heads/main/Library.lua"))() 
 ESPLibrary:SetFadeTime(0.5)
 Window = Library:CreateWindow({Title='ProHax V3',Center=true,AutoShow=true})
 Tabs = {
@@ -2004,7 +2004,7 @@ makeRoomESP("Key",
 makeRoomESP(
     "Chest",
     function(o)
-        return o.Name == "Toolbox" or o.Name == "Toolbox_Locked" or o.Name == "Chest" or o.Name == "Chest_Vine" or o.Name == "Chest_Locked"
+        return o.Name == "Toolbox" or o.Name == "Toolbox_Locked" or o.Name == "ChestBox" or o.Name == "Chest_Vine" or o.Name == "ChestBoxLocked"
     end,
     function(o)
         return o.Name
