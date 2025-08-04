@@ -2657,7 +2657,15 @@ do
 end
 	
 -- === DELETE FIGURE (FE) ===
-	BypassBox:AddToggle("DeleteFigure", {
+	 storedFigures = {}
+
+for _, v in ipairs(workspace.CurrentRooms:GetDescendants()) do
+	if v.Name == "FigureRagdoll" or v.Name == "FigureRig" then
+		table.insert(storedFigures, v)
+	end
+end
+
+BypassBox:AddToggle("DeleteFigure", {
 	Text = "Delete Figure",
 	Default = false,
 	Callback = function(on)
@@ -2666,24 +2674,13 @@ end
 			return
 		end
 
-		if on then
-			if _df_running then return end
-			_df_running = true
-
-			white(function()
-				while _df_running do
-					local figure = getinstance("FigureRig") or getinstance("FigureRagdoll")
-					if figure and isnetworkowner(figure.Root) then
-						figure:PivotTo(CFrame.new(0, -9999, 0))
-					else
-						_df_running = false
-						break
-					end
-					task.wait(0.2)
+		while on do
+			for _, figure in ipairs(storedFigures) do
+				if figure and figure:FindFirstChild("Root") and isnetworkowner(figure.Root) then
+					figure:PivotTo(CFrame.new(0, -9999, 0))
 				end
-			end)
-		else
-			_df_running = false
+			end
+			task.wait(0.02)
 		end
 	end
 })
@@ -3088,73 +3085,89 @@ SaveManager:BuildConfigSection(Tabs.UISettings)
 	-- Services
 	 
 
-	con = nil
-	FigureBodyPositions = {}
+	
+ StoredFigures = {}
+local FreezeConnection = nil
 
-	function handleFigureFreezeTarget(figure)
-		local primary = figure.PrimaryPart
-		repeat task.wait(0.2) until isnetworkowner(primary)
-		local bp = Instance.new("BodyPosition", primary)
-		bp.MaxForce = Vector3.new(1e30, 1e30, 1e30)
-		bp.P = 9999999999
-		bp.Position = primary.Position
-		FigureBodyPositions[#FigureBodyPositions + 1] = bp
+for _, v in ipairs(workspace.CurrentRooms:GetDescendants()) do
+	if v.Name == "FigureRig" or v.Name == "FigureRagdoll" then
+		table.insert(StoredFigures, v)
 	end
+end
 
-	TrollBox:AddToggle("Figure Freeze", {
-		Text    = "Figure Freeze (FE)",
-		Default = false,
-		Callback = function(Value)
-			FigureFreeze = Value
-			if Value then
-				local room = workspace.CurrentRooms
-				local descendants = room:GetDescendants()
-				for i = 1, #descendants do
-					local v = descendants[i]
-					if v.Name == "FigureRig" or v.Name == "FigureRagdoll" then
-						handleFigureFreezeTarget(v)
+TrollBox:AddToggle("FigureFreeze", {
+	Text = "Figure Freeze (FE)",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			FreezeConnection = RunService.Heartbeat:Connect(function()
+				for _, fig in ipairs(StoredFigures) do
+					local root = fig.PrimaryPart
+					if root and isnetworkowner(root) then
+						if not root:FindFirstChildOfClass("BodyPosition") then
+							local bp = Instance.new("BodyPosition")
+							bp.MaxForce = Vector3.new(1e30, 1e30, 1e30)
+							bp.P = 9999999999
+							bp.Position = root.Position
+							bp.Parent = root
+						end
 					end
 				end
-				con = room.DescendantAdded:Connect(function(v)
-					if v.Name == "FigureRig" or v.Name == "FigureRagdoll" then
-						handleFigureFreezeTarget(v)
-					end
-				end)
-			else
-				if con then
-					con:Disconnect()
-					con = nil
-				end
-				for i = 1, #FigureBodyPositions do
-					local bp = FigureBodyPositions[i]
-					if bp and bp.Parent then
+			end)
+		else
+			if FreezeConnection then
+				FreezeConnection:Disconnect()
+				FreezeConnection = nil
+			end
+			for _, fig in ipairs(StoredFigures) do
+				local root = fig.PrimaryPart
+				if root then
+					local bp = root:FindFirstChildOfClass("BodyPosition")
+					if bp then
 						bp:Destroy()
 					end
 				end
-				FigureBodyPositions = {}
 			end
 		end
-	})
+	end
+})
+
+ StoreFigures = {}
+local TPConnection = nil
+
+for _, v in ipairs(workspace.CurrentRooms:GetDescendants()) do
+	if v.Name == "FigureRig" or v.Name == "FigureRagdoll" then
+		table.insert(StoreFigures, v)
+	end
+end
+
 TrollBox:AddToggle("TPFigure", {
-		Text    = "TP Figure to Latest Door (FE)",
-		Default = false,
-		Callback = function(Value)
-if Value then
-if not isnetworkowner then
-Library:Notify("[TP Figure] Doesn't work cuz Executor  Doesn't Support isnetworkowner",4)
-return
-end
-while task.wait(0.2) do
-if not Toggles.TPFigure.Value then break end
-local Figure = getinstance("FigureRig") or getinstance("FigureRagdoll")
-if Figure and Figure.Root then
-if isnetworkowner(Figure.Root) then
-Figure:PivotTo(CFrame.new(workspace.CurrentRooms[game.ReplicatedStorage.GameData.LatestRoom.Value].Door.Door.CFrame))
-end
-end
-end
-end
-end
+	Text = "TP Figure to Latest Door (FE)",
+	Default = false,
+	Callback = function(Value)
+		if Value then
+			if not isnetworkowner then
+				Library:Notify("[TP Figure] Doesn't work cuz Executor Doesn't Support isnetworkowner", 4)
+				return
+			end
+			TPConnection = RunService.Heartbeat:Connect(function()
+				for _, fig in ipairs(StoreFigures) do
+					local root = fig:FindFirstChild("Root")
+					if root and isnetworkowner(root) then
+						local door = workspace.CurrentRooms[game.ReplicatedStorage.GameData.LatestRoom.Value].Door
+						if door and door:FindFirstChild("Door") then
+							fig:PivotTo(door.Door.CFrame)
+						end
+					end
+				end
+			end)
+		else
+			if TPConnection then
+				TPConnection:Disconnect()
+				TPConnection = nil
+			end
+		end
+	end
 })
 	con = nil
 	RemotesFolder = nil
@@ -3261,7 +3274,7 @@ do
     local ancestryConns = {}      
     local descendantConn = nil
 
-    local function addLadder(inst)
+     function addLadder(inst)
         if ladderESPHandles[inst] then return end
         -- Only consider if it's under CurrentRooms
         if not inst:IsDescendantOf(Workspace:WaitForChild("CurrentRooms")) then return end
@@ -3304,7 +3317,7 @@ do
         ladderESPHandles = {}
     end
 
-    ESPBox:AddToggle("Ladder ESP", {
+    ESPBox:AddToggle("LadderESP", {
         Text = "Ladder ESP",
         Default = false,
         Callback = function(enabled)
@@ -3330,11 +3343,7 @@ do
             end
 
             -- Listen for future spawns
-            descendantConn = roomsFolder.DescendantAdded:Connect(function(inst)  -- 
-                if inst.Name == "Ladder" then
-                    addLadder(inst)
-                end
-            end)
+            
         end,
     })
 end
@@ -3447,13 +3456,13 @@ if ReplicatedStorage.GameData.Floor.Value == "Mines" then
 	})
 end
 if ReplicatedStorage.GameData.Floor.Value == "Mines" then
-	local TARGET_NAME = "SeekGuidingLight"
+	 TARGET_NAME = "SeekGuidingLight"
 	local seekLightGuides = {}
 	local ancestryConns = {}
 	local descendantConn = nil
 	local updateConnection = nil
 
-	local function createGuideFor(target)
+	 function createGuideFor(target)
 		if seekLightGuides[target] or not target:IsA("BasePart") then return end
 
 		local guide = Instance.new("Part")
@@ -3522,12 +3531,6 @@ if ReplicatedStorage.GameData.Floor.Value == "Mines" then
 					createGuideFor(inst)
 				end
 			end
-
-			descendantConn = workspace.DescendantAdded:Connect(function(inst)
-				if inst:IsA("BasePart") and inst.Name == TARGET_NAME then
-					createGuideFor(inst)
-				end
-			end)
 		end
 	})
 end
@@ -4341,6 +4344,11 @@ AutoBox:AddToggle("Spectate", {
 Library:Notify("Loaded, Prohax, Successfully",3) 
 
 workspace.DescendantAdded:Connect(function(inst)
+	if Toggles.DeleteFigure.Value then
+		if inst.Name == "FigureRig" or inst.Name == "FigureRagdoll" then
+			table.insert(storedFigures, inst)
+		end
+	end
 local name = inst.Name
 local parent = inst.Parent
 
@@ -4501,4 +4509,25 @@ end
 			handleprompt(inst)
 		end
 	end
+
+if Toggles.FigureFreeze.Value then
+if inst.Name == "FigureRagdoll" or inst.Name == "FigureRig" then
+table.insert(StoredFigures,inst)
+      end
+end
+if Toggles.TPFigure.Value then
+if inst.Name == "FigureRagdoll" or inst.Name == "FigureRig" then
+table.insert(StoreFigures,inst)
+     end
+end
+if Toggles.LadderESP.Value then
+if inst.Name == "Ladder" then
+addLadder(inst)
+end
+end
+if Toggles.ShowSeekGuides.Value then
+if inst:IsA("BasePart") and inst.Name == TARGET_NAME then
+					createGuideFor(inst)
+				end
+end
 end) 
