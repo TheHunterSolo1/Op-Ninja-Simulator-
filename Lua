@@ -3459,121 +3459,8 @@ Character.Humanoid.WalkSpeed = Speed
 end
 
 if Toggles.Fieldofview.Value then
-if alive then
+
 Workspace.CurrentCamera.FieldOfView = View
-end
-
-if Toggles.Noclip.Value then
-if alive then
-LocalPlayer.Character.Collision.CanCollide = false
-LocalPlayer.Character.Collision.CollisionCrouch.CanCollide = false
-LocalPlayer.Character.HumanoidRootPart.CanCollide = false
-end
-end
-if Toggles.NoCameraShake.Value then
-if alive then
-RequiredMainGame.csgo = CFrame.new()
-end
-end
-if  Toggles.DeleteFigure and Toggles.DeleteFigure.Value then
-if alive then
-local Figure = workspace:FindFirstChild("FigureRig",true)
-if Figure and Figure.Root and isnetworkowner(Figure.Root) then
-Figure:PivotTo(CFrame.new(0,-100000,0))
-end
-end
-end
-if Toggles.DoorReach.Value then
-if alive then
-local Door = workspace.CurrentRooms[ReplicatedStorage.GameData.LatestRoom.Value].Door
-if Door and Door:FindFirstChild("ClientOpen") then
-if (Character.HumanoidRootPart.Position - Door.Door.Position).Magnitude < Range then
-Door.ClientOpen:FireServer()
-end
-end
-end
-end
-
-if Toggles.ThirdPerson.Value then
-if alive then
-Workspace.CurrentCamera.CFrame = Workspace.CurrentCamera.CFrame * CFrame.new(X, Y, Z)
-for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-if part:IsA("BasePart")  and part.Name == "Head" then
-part.LocalTransparencyModifier = (Toggles.ThirdPerson.Value and 0) or 1
-elseif part:IsA("Accessory") and part:FindFirstChild("Handle") then
-part.Handle.LocalTransparencyModifier = (Toggles.ThirdPerson.Value and 0) or 1
-end
-end
-end
-end
-
-
-
-
-if Toggles.AntiEyes.Value then
-if alive then
-if Workspace:FindFirstChild("Eyes") then
-RemoteFolder.MotorReplication:FireServer(-890)
-end
-end
-end
-
-if Toggles.GodMode.Value then
-Character.Collision.CollisionCrouch.CanCollide = false
-
-end
-
-if Toggles.AnticheatManipulation.Value then
-if alive then
-Character:PivotTo(LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 10000))
-
-end
-end
-
-
-
-
-
-
-if Toggles.SpectateEntity.Value then
-if alive then
-for _, entity in ipairs(workspace:GetChildren()) do
-if SpectateTable[entity.Name] then
-if entity.PrimaryPart then 
-if Character:GetAttribute("Hiding") == true then
-Workspace.Camera.CFrame = CFrame.lookAt(Workspace.CurrentCamera.CFrame.Position, entity.PrimaryPart.Position)
-           end
-      end
-end
-end
-end
-end
-
-
-if Toggles.AntiLookman.Value then
-if alive then
-if Workspace:FindFirstChild("BackdoorLookman") then
-RemoteFolder.MotorReplication:FireServer(-890)
-
-end
-end
-end
-
-if Fog then
-Fog.Density = (Toggles.AntiFog.Value and 0) or 0.94
-end
-
-if Toggles.TransparencyCart.Value then
-if Workspace.CurrentCamera and Workspace.CurrentCamera:FindFirstChild("MinecartRig") then
-for _, v in ipairs(workspace.CurrentCamera.MinecartRig:GetChildren()) do
-if v:IsA("BasePart") then
-v.Transparency = CartTransparencyValue
-
-
-end
-end
-
-end
 end
 
 if Toggles.AutoCloset.Value then
@@ -3735,6 +3622,122 @@ Lighting.GlobalShadows = not Toggles.Fullbright.Value
 if Toggles.AntiHear.Value then
 RemoteFolder.Crouch:FireServer(true)
 end
+
+
+if Toggles.Noclip.Value then
+if alive then
+LocalPlayer.Character.Collision.CanCollide = false
+LocalPlayer.Character.Collision.CollisionCrouch.CanCollide = false
+LocalPlayer.Character.HumanoidRootPart.CanCollide = false
+end
+end
+if Toggles.NoCameraShake.Value then
+if alive then
+RequiredMainGame.csgo = CFrame.new()
+end
+end
+if  Toggles.DeleteFigure and Toggles.DeleteFigure.Value then
+if alive then
+local Figure = workspace:FindFirstChild("FigureRig",true)
+if Figure and Figure.Root and isnetworkowner(Figure.Root) then
+Figure:PivotTo(CFrame.new(0,-100000,0))
+end
+end
+end
+if Toggles.DoorReach.Value then
+if alive then
+local Door = workspace.CurrentRooms[ReplicatedStorage.GameData.LatestRoom.Value].Door
+if Door and Door:FindFirstChild("ClientOpen") then
+if (Character.HumanoidRootPart.Position - Door.Door.Position).Magnitude < Range then
+Door.ClientOpen:FireServer()
+end
+end
+end
+end
+
+if Toggles.ThirdPerson.Value then
+if alive then
+Workspace.CurrentCamera.CFrame = Workspace.CurrentCamera.CFrame * CFrame.new(X, Y, Z)
+for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+if part:IsA("BasePart")  and part.Name == "Head" then
+part.LocalTransparencyModifier = (Toggles.ThirdPerson.Value and 0) or 1
+elseif part:IsA("Accessory") and part:FindFirstChild("Handle") then
+part.Handle.LocalTransparencyModifier = (Toggles.ThirdPerson.Value and 0) or 1
+end
+end
+end
+end
+
+
+
+
+if Toggles.AntiEyes.Value then
+if alive then
+if Workspace:FindFirstChild("Eyes") then
+RemoteFolder.MotorReplication:FireServer(-890)
+end
+end
+end
+
+if Toggles.GodMode.Value then
+Character.Collision.CollisionCrouch.CanCollide = false
+
+end
+
+if Toggles.AnticheatManipulation.Value then
+if alive then
+Character:PivotTo(LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 10000))
+
+end
+end
+
+
+
+
+
+
+if Toggles.SpectateEntity.Value then
+if alive then
+for _, entity in ipairs(workspace:GetChildren()) do
+if SpectateTable[entity.Name] then
+if entity.PrimaryPart then 
+if Character:GetAttribute("Hiding") == true then
+Workspace.Camera.CFrame = CFrame.lookAt(Workspace.CurrentCamera.CFrame.Position, entity.PrimaryPart.Position)
+           end
+      end
+end
+end
+end
+end
+
+
+if Toggles.AntiLookman.Value then
+if alive then
+if Workspace:FindFirstChild("BackdoorLookman") then
+RemoteFolder.MotorReplication:FireServer(-890)
+
+end
+end
+end
+
+if Fog then
+Fog.Density = (Toggles.AntiFog.Value and 0) or 0.94
+end
+
+if Toggles.TransparencyCart.Value then
+if Workspace.CurrentCamera and Workspace.CurrentCamera:FindFirstChild("MinecartRig") then
+for _, v in ipairs(workspace.CurrentCamera.MinecartRig:GetChildren()) do
+if v:IsA("BasePart") then
+v.Transparency = CartTransparencyValue
+
+
+end
+end
+
+end
+end
+
+
 
 
 end
