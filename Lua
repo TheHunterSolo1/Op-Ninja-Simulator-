@@ -3452,8 +3452,9 @@ print("RenderStepped")
 
 table.insert(Connections,RunService.RenderStepped:Connect(function()
 alive = LocalPlayer:GetAttribute("Alive")
-if Toggles.SpeedBoost.Value then
 if alive then
+if Toggles.SpeedBoost.Value then
+
 Character.Humanoid.WalkSpeed = Speed
 end
 
