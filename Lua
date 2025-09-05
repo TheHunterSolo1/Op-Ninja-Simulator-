@@ -1,8 +1,54 @@
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local SoundService = game:GetService("SoundService")
+local Debris = game:GetService("Debris")
+
+
+local notifysound = 4590657391
+
+local PlayingSound = true
+
+
+function Sound()
+
+
+local sound = Instance.new("Sound",SoundService)
+
+
+sound.Volume = 2.5
+
+
+sound.SoundId = "rbxassetid://" .. notifysound 
+
+
+sound.Playing = PlayingSound and true or false
+
+
+
+Debris:AddItem(sound,2)
+
+
+end
+
+
+
+
+
 
 if game.Players.LocalPlayer:GetAttribute("mshaxLoaded") then 
 print("mshax already loaded")
 
 return end
+
+if game.ReplicatedStorage:FindFirstChild("RemotesFolder") or game.ReplicatedStorage:FindFirstChild("Bricks") or game.ReplicatedStorage:FindFirstChild("EntityInfo") then
 
 local Disable1 = false
 local Disable2 = false
@@ -168,46 +214,12 @@ end
 
 end)
 -- Services
-local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ProximityPromptService = game:GetService("ProximityPromptService")
-local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
-local SoundService = game:GetService("SoundService")
-local Debris = game:GetService("Debris")
-
-
-local notifysound = 4590657391
-
-local PlayingSound = true
-
-
-function Sound()
-
-
-local sound = Instance.new("Sound",SoundService)
-
-
-sound.Volume = 2.5
-
-
-sound.SoundId = "rbxassetid://" .. notifysound 
-
-
-sound.Playing = PlayingSound and true or false
-
-
-
-Debris:AddItem(sound,2)
-
-
-end
 
 -- Variables
-LocalPlayer = Players.LocalPlayer
+
 LocalPlayer:SetAttribute("mshaxLoaded",true)
+LocalPlayer.Character.Archivable = true
+
  Floor = ReplicatedStorage.GameData.Floor
  RemoteFolder = ReplicatedStorage:FindFirstChild("RemotesFolder") or ReplicatedStorage:FindFirstChild("Bricks") or ReplicatedStorage:FindFirstChild("EntityInfo")
  MainGame = LocalPlayer.PlayerGui.MainUI.Initiator.Main_Game
@@ -340,7 +352,7 @@ local Connections = {}
 
 
 Window = Library:CreateWindow({
-    Title = 'mshax v4 ',
+    Title = 'mshax v4 | DOORS ',
     Center = true,
     AutoShow = true
 })
@@ -355,6 +367,8 @@ Tabs = {
 Addons = Window:AddTab('Addons'),
 
 }
+
+
 
 
 
@@ -765,9 +779,6 @@ Camera:AddToggle('SpectateEntity',{
      Default = false
 })
 
-
-
-
 NotifyBox:AddDropdown("EntitiesPicker", {
         Values = { "Rush","Ambush","A-60","A-120","Bramble","Snare","Giggle","Grumble","Eyes","Lookman","Blitz","Figure","GlitchRush","GlitchAmbush","Monument","Groundskeeper"},
         Default = 1, -- number index of the value / string
@@ -982,7 +993,31 @@ Movement:AddDivider()
 Movement:AddToggle('Noclip',{
      Text = "Noclip",
      Default = false
-})
+}):AddKeyPicker('NoclipKeybind', {
+
+
+		Default = 'N', -- String as the name of the keybind (MB1, MB2 for mouse buttons)
+		SyncToggleState = true,
+
+
+		-- You can define custom Modes but I have never had a use for it.
+		Mode = 'Toggle', -- Modes: Always, Toggle, Hold
+
+		Text = 'Noclip', -- Text to display in the keybind menu
+		NoUI = false, -- Set to true if you want to hide from the Keybind menu,
+
+		-- Occurs when the keybind is clicked, Value is `true`/`false`
+		Callback = function(Value)
+
+
+
+		end,
+
+		-- Occurs when the keybind itself is changed, `New` is a KeyCode Enum OR a UserInputType Enum
+		ChangedCallback = function(New)
+		end
+	})
+
 
 Toggles.Noclip:OnChanged(function(Value)
 if not Value then 
@@ -1547,7 +1582,7 @@ return closest
 end
 
 local EntitysTable = {
-RushMoving = 109,
+RushMoving = 85,
 AmbushMoving = 144,
 GlitchRush = 120,
 GlitchAmbush = 155,
@@ -1960,18 +1995,29 @@ end
 
 local hitted = false
 
+
+local Delay = 0.216
+
 Bypass:AddToggle('SpeedBypass',{
      Text = "Speed Bypass",
      Default = false,
 Callback = function(Value)
 Options.SpeedBoostSlider:SetMax(Value and 60 or 21)
+
+Options.SpeedBoostSlider:SetValue(Value and Options.SpeedBoostSlider.Value or 21)
+
+
 Options.FlySpeed:SetMax(Value and 60 or 21)
 
-while task.wait(0.216)  do
 
+Options.FlySpeed:SetValue(Value and Options.FlySpeed.Value or 21)
+
+
+while true   do
+task.wait(Delay)
 if not  Toggles.SpeedBypass.Value or Library.Unloaded then
 CollisionClone.Massless = true
-
+CollisionClone2.Massless = true
 break end
 if alive then
 
@@ -1979,11 +2025,11 @@ if CollisionClone then
 if Character.CollisionPart.Anchored or hitted or Toggles.AnticheatManipulation.Value then
 CollisionClone.Massless = true
 CollisionClone2.Massless = true
-task.wait(0.81)
+task.wait(0.65)
 else
 CollisionClone.Massless = true
 CollisionClone2.Massless = true
-task.wait(0.216)
+task.wait(Delay)
 CollisionClone2.Massless = false
 CollisionClone.Massless = false
 end
@@ -1992,6 +2038,21 @@ end
 end
 
 end,
+})
+
+
+Bypass:AddSlider("SpeedBypassDelay", {
+        Text = "Speed Bypass Interval",
+        Default = Delay,
+        Min = 0.2,
+        Max = 0.23,
+        Rounding = 1,
+        Compact = true,
+
+        Callback = function(Value)
+          Delay = Value
+
+     end,      
 })
 Bypass:AddDivider()
 Bypass:AddToggle('GodMode',{
@@ -2020,17 +2081,36 @@ end
 
 
 end
-})
+}):AddKeyPicker('GodmodeKeybind', {
+
+
+		Default = 'G', -- String as the name of the keybind (MB1, MB2 for mouse buttons)
+		SyncToggleState = true,
+
+
+		-- You can define custom Modes but I have never had a use for it.
+		Mode = 'Toggle', -- Modes: Always, Toggle, Hold
+
+		Text = 'God Mode', -- Text to display in the keybind menu
+		NoUI = false, -- Set to true if you want to hide from the Keybind menu,
+
+		-- Occurs when the keybind is clicked, Value is `true`/`false`
+		Callback = function(Value)
 
 
 
-local Delay = 0.05
-local debounce = false
+		end,
 
-Bypass:AddToggle('NoclipBypass',{
-     Text = "Auto Anti Cheat Manipulation",
-     Default = false
-})
+		-- Occurs when the keybind itself is changed, `New` is a KeyCode Enum OR a UserInputType Enum
+		ChangedCallback = function(New)
+		end
+	})
+
+
+
+
+
+
 Bypass:AddToggle('AnticheatManipulation',{
      Text = "Anti Cheat Manipulation",
      Default = false
@@ -2059,32 +2139,7 @@ Bypass:AddToggle('AnticheatManipulation',{
 		end
 	})
 
-local AutoAnticheat = nil
-AutoAnticheat = LocalPlayer.Character.CollisionPart.Touched:Connect(function(hit)
-if Library.Unloaded then return end
-if hit.Parent and hit.Parent.Name == "Door" then return end
-if not Toggles.NoclipBypass.Value then 
-debounce = false
-return end
-if hit:IsA("BasePart") and hit.CanCollide then
-if hit.Parent.Name ~= LocalPlayer.Name then
-if not debounce then
-hitted = true 
 
-for i = 1, 4 do
-Character:PivotTo(LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,1000000))
-task.wait(0.15)
-end
-debounce = true
-task.wait(0.75)
-hitted = false 
-end
-task.delay(Delay,function()
-debounce = false
-end)
-end
-end
-end)
 
 
 
@@ -3453,6 +3508,10 @@ print("RenderStepped")
 table.insert(Connections,RunService.RenderStepped:Connect(function()
 alive = LocalPlayer:GetAttribute("Alive")
 if alive then
+
+
+
+
 if Toggles.SpeedBoost.Value then
 
 Character.Humanoid.WalkSpeed = Speed
@@ -4612,4 +4671,4 @@ ThemeManager:ApplyToTab(Tabs['UISettings'])
 SaveManager:GetAutoloadConfig()
 SaveManager:LoadAutoloadConfig()
 SaveManager:SaveAutoloadConfig(file_path)
-
+end
