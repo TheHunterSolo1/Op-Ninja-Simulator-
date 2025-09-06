@@ -780,7 +780,7 @@ Camera:AddToggle('SpectateEntity',{
 })
 
 NotifyBox:AddDropdown("EntitiesPicker", {
-        Values = { "Rush","Ambush","A-60","A-120","Bramble","Snare","Giggle","Grumble","Eyes","Lookman","Blitz","Figure","GlitchRush","GlitchAmbush","Monument","Groundskeeper"},
+        Values = { "Rush","Ambush","A-60","A-120","Bramble","Grumble","Eyes","Lookman","Blitz","Figure","GlitchRush","GlitchAmbush","Monument","Groundskeeper"},
         Default = 1, -- number index of the value / string
         Multi = true, -- true / false, allows multiple choices to be selected
 
@@ -1257,7 +1257,9 @@ RevivePrompt = true,
 
 PropPrompt = true,
 
-NoHidingLilBro = true
+NoHidingLilBro = true,
+
+DonatePrompt = true
 
 }
 
@@ -3808,6 +3810,79 @@ end))
 
 table.insert(Connections,LocalPlayer:GetAttributeChangedSignal("CurrentRoom"):Connect(function()
 
+if Toggles.AntiSnare.Value then
+if Floor.Value == "Garden" then
+
+for _, room in ipairs(workspace.CurrentRooms:GetChildren()) do
+if room:FindFirstChild("Snares") then
+for _, v in ipairs(room.Snares:GetChildren()) do
+if v.Name == "Snare" then
+v:WaitForChild("Hitbox",9e9).CanTouch = false
+end
+end
+end
+end
+
+else
+
+for _, room in ipairs(workspace.CurrentRooms:GetChildren()) do
+if room:FindFirstChild("Assets") then
+for _, v in ipairs(room.Assets:GetChildren()) do
+ 
+if v.Name == "Snare" then
+v:WaitForChild("Hitbox",9e9).CanTouch = false
+end
+end
+end
+end
+end
+end
+if Toggles.AntiDupe.Value then
+for _, v in ipairs(workspace.CurrentRooms[LocalPlayer:GetAttribute("CurrentRoom")]:GetChildren()) do
+
+
+
+if v and v.Name == "SideroomDupe" then
+
+v:WaitForChild("DoorFake",9e9):WaitForChild("Hidden",9e9).CanTouch = false
+
+end
+
+end
+
+end
+
+for _, v in ipairs(workspace.CurrentRooms[LocalPlayer:GetAttribute("CurrentRoom")]:GetChildren()) do
+
+
+
+
+if v.Name == "SideroomDupe" then
+
+
+if v:WaitForChild("DoorFake"):FindFirstChild("Lock") then
+v:WaitForChild("DoorFake"):FindFirstChild("Lock"):FindFirstChildOfClass("ProximityPrompt").ClickablePrompt =  not Toggles.AntiDupe.Value 
+
+
+end
+
+
+end
+
+end
+
+if Toggles.AntiGiggle and Toggles.AntiGiggle.Value then
+for _, v in ipairs(workspace.CurrentRooms[LocalPlayer:GetAttribute("CurrentRoom")]:GetChildren()) do
+if v.Name == "GiggleCeiling" then
+v:WaitForChild("Hitbox",9e9).CanTouch = false
+end
+end
+end
+
+
+
+
+
 if Toggles.Door.Value then
 local room = LocalPlayer:GetAttribute("CurrentRoom")
 if room and room > 0 then
@@ -3922,11 +3997,9 @@ ChestBoxLocked = true, Locker_Small_Locked = true, Toolbox_Locked = true
 
 local ImportantNames = {
     Groundskeeper = true,
-    Snare = true,
-    DoorFake = true,
     ChandelierObstruction = true,
     Seek_Arm = true,
-    GiggleCeiling = true,
+    
     Egg = true,
     SideroomSpace = true,
     LiveHintBook = true,
@@ -3988,7 +4061,6 @@ Locker_Small_Locked = true, Toolbox_Locked = true,
     StardustPickup = true,
 ElevatorBreaker = true,
 WaterPump = true,
-GiggleCeiling = true,
 GrumbleRig = true,
 Ladder = true
 
@@ -4093,34 +4165,6 @@ end
 end
 
 
-if Toggles.AntiSnare.Value then
-if v.Name == "Snare" and v.Parent and v.Parent.Name ~= "Snare" then
-v:WaitForChild("Hitbox",9e9).CanTouch = false
-end
-end
-if Toggles.AntiDupe.Value then
-
-
-if v and v.Name == "DoorFake" then
-
-v:WaitForChild("Hidden",9e9).CanTouch = false
-
-end
-
-end
-
-if v.Name == "DoorFake" then
-
-
-if v:FindFirstChild("Lock") then
-v:FindFirstChild("Lock"):FindFirstChildOfClass("ProximityPrompt").ClickablePrompt =  not Toggles.AntiDupe.Value 
-
-
-end
-
-
-
-end
 
 
 
@@ -4186,16 +4230,9 @@ if Toggles.EntitesESP.Value  and  v.Name == "Groundskeeper" and Options.Entities
 addESP(v,"Grounds Keeper")
 end
 
-if Toggles.EntitesESP.Value and v.Name == "Snare" and Options.EntitiesPicker.Value["Snare"] then
-addESP(v,"Snare")
-      end
 
 
-if Toggles.AntiGiggle and Toggles.AntiGiggle.Value then
-if v.Name == "GiggleCeiling" then
-v:WaitForChild("Hitbox",9e9).CanTouch = false
-end
-end
+
 
 
 
