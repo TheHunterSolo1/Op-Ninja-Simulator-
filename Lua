@@ -3558,7 +3558,6 @@ print("RenderStepped")
 -- here
 
 
-local Danger = workspace:FindFirstChild("A60") or workspace:FindFirstChild("A120")
 
 table.insert(Connections,RunService.RenderStepped:Connect(function()
 alive = LocalPlayer:GetAttribute("Alive")
@@ -3566,7 +3565,7 @@ if alive then
 
 if Toggles.AutoRooms and Toggles.AutoRooms.Value then
 
-if  Danger  and Danger.PrimaryPart and Danger.PrimaryPart.Position.Y > -9 then
+if  Workspace:FindFirstChild("A60") or Workspace:FindFirstChild("A120") then
 local Locker = GetNearestCloset()
 
 if Locker then
@@ -3589,7 +3588,7 @@ end
 
 end
 
-elseif not Danger or Danger.PrimaryPart.Position.Y < -9 then
+else
 LocalPlayer.Character:SetAttribute("Hiding",false)
 
 moveto(workspace.CurrentRooms[game.ReplicatedStorage.GameData.LatestRoom.Value].Door.Door)
