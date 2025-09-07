@@ -455,16 +455,34 @@ SettingsBox = Tabs.UISettings:AddRightGroupbox('UI')
 
 if Floor.Value == "Rooms" then
 
+function addpart(position)
+
+local Part = Instance.new("Part",workspace:FindFirstChild("Path Node"))
+Part.Name = "Waypoint"
+Part.Size = Vector3.new(0.3, 0.3, 0.3)
+Part.Position = position
+Part.Anchored = true
+Part.CanCollide = false
+Part.Color = Color3.new(0, 1, 0)
+
+
+
+end
+
+
 function moveto(target)
 local path = PathfindingService:CreatePath({
-AgentRadius = 0.5,
+AgentRadius = 0.6,
 AgentHeight = 0.1,
+AgentCanClimb = true,
+
 AgentCanJump = false,
-WaypointSpacing = 3
+WaypointSpacing = 1.5
 })
 
 path:ComputeAsync(LocalPlayer.Character.HumanoidRootPart.Position, target.Position)
 if path.Status == Enum.PathStatus.Success  then
+
 for _, waypoint in ipairs(path:GetWaypoints()) do
 
 LocalPlayer.Character.Humanoid:MoveTo(waypoint.Position)
@@ -483,10 +501,23 @@ end
 
 
 
+
+
 FloorAnti:AddToggle('AutoRooms',{
 Text = "Auto Rooms",
 Default = false
 })
+Toggles.AutoRooms:OnChanged(function(Value)
+
+
+if not Value then
+LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position)
+
+
+end
+
+end)
+FloorAnti:AddDivider()
 
 end
 SettingsBox:AddToggle('FpsUnlocker',{
@@ -3411,7 +3442,7 @@ Sound()
 end
 
 if v.Name == "Eyes" and Options.EntitiesPicker.Value["Eyes"] then
-Notify("Eyes Has Spawned,Look At it",3)
+Notify("Eyes Has Spawned,Avoid Looking At it",3)
 Sound()
 end
 
@@ -3555,16 +3586,18 @@ print("RenderStepped")
 
 
 -- here
-
-
-
 table.insert(Connections,RunService.RenderStepped:Connect(function()
-alive = LocalPlayer:GetAttribute("Alive")
 if alive then
-
 if Toggles.AutoRooms and Toggles.AutoRooms.Value then
 
-if  Workspace:FindFirstChild("A60") or Workspace:FindFirstChild("A120") then
+if ReplicatedStorage.GameData.LatestRoom.Value == 1000 then return end
+
+if Toggles.AutoCloset.Value then
+Toggles.AutoCloset:SetValue(false)
+Library:Notify("Disabled Auto Closet for auto rooms to work properly",4)
+
+end
+if  Workspace:FindFirstChild("A60") or Workspace:FindFirstChild("A120") or Workspace:FindFirstChild("GlitchRush") or Workspace:FindFirstChild("GlitchAmbush") then
 local Locker = GetNearestCloset()
 
 if Locker then
@@ -3608,6 +3641,19 @@ end
 
 
 
+
+
+
+
+
+end 
+
+end))
+
+
+table.insert(Connections,RunService.RenderStepped:Connect(function()
+alive = LocalPlayer:GetAttribute("Alive")
+if alive then
 
 
 if Toggles.AutoInteract.Value then
@@ -4495,6 +4541,14 @@ end);
 
 function Unload()
 LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position)
+
+if workspace:FindFirstChild("Path Node") then
+
+workspace:FindFirstChild("Path Node"):Destroy()
+
+
+
+end
 
 LocalPlayer:SetAttribute("mshaxLoaded",false)
 Library.Unloaded = true
