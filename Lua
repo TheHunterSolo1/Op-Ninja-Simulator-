@@ -159,12 +159,11 @@ for _, v in ipairs(assets:FindFirstChild("Assets",true):GetChildren()) do
 
 if v.Name == "Wardrobe" or v.Name == "Rooms_Locker" or v.Name == "Rooms_Locker_Fridge" or v.Name == "Toolshed" or v.Name == "Locker_Large" or v.Name == "Backdoor_Wardrobe" or v.Name == "Bed" or v.Name == "Double_Bed" then
 if v.PrimaryPart then
-if v.PrimaryPart.Position.Y > -9 then
+
 local Distance = (LocalPlayer.Character.HumanoidRootPart.Position - v.PrimaryPart.Position).Magnitude
 if Distance < MaxDistance then
 closest = v
 MaxDistance = Distance 
-end
 end
 end
 end
