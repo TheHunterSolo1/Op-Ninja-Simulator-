@@ -4,6 +4,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
+RunService:Set3dRenderingEnabled(true)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local UserInputService = game:GetService("UserInputService")
@@ -1560,8 +1561,9 @@ function GetNearestCloset()
 
 local closest = nil
 local MaxDistance = math.huge
-for _, v in ipairs(workspace.CurrentRooms[LocalPlayer:GetAttribute("CurrentRoom")]:FindFirstChild("Assets",true):GetChildren()) do
-
+local assets = workspace.CurrentRooms[LocalPlayer:GetAttribute("CurrentRoom")]:FindFirstChild("Assets",true)
+if assets then
+for _, v in ipairs(assets:GetChildren()) do
 
 if v.Name == "Wardrobe" or v.Name == "Rooms_Locker" or v.Name == "Rooms_Locker_Fridge" or v.Name == "Toolshed" or v.Name == "Locker_Large" or v.Name == "Backdoor_Wardrobe" or v.Name == "Bed" or v.Name == "Double_Bed" then
 if not v.Main:FindFirstChild("HideEntityOnSpot") then
@@ -1570,6 +1572,7 @@ local Distance = (LocalPlayer.Character.HumanoidRootPart.Position - v.PrimaryPar
 if Distance < MaxDistance then
 closest = v
 MaxDistance = Distance 
+end
 end
 end
 end
