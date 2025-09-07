@@ -4,6 +4,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
+local PathfindingService = game:GetService("PathfindingService")
 RunService:Set3dRenderingEnabled(true)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ProximityPromptService = game:GetService("ProximityPromptService")
@@ -146,6 +147,32 @@ SaveManager  = loadstring(game:HttpGet(repo..'addons/SaveManager.lua'))()
 Options = Library.Options
 Toggles = Library.Toggles
 local ESPLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/bocaj111004/ESPLibrary/refs/heads/main/Library.lua"))()
+
+function GetNearestCloset()
+
+
+local closest = nil
+local MaxDistance = math.huge
+local assets = workspace.CurrentRooms[LocalPlayer:GetAttribute("CurrentRoom")]
+if assets then
+for _, v in ipairs(assets:FindFirstChild("Assets",true):GetChildren()) do
+
+if v.Name == "Wardrobe" or v.Name == "Rooms_Locker" or v.Name == "Rooms_Locker_Fridge" or v.Name == "Toolshed" or v.Name == "Locker_Large" or v.Name == "Backdoor_Wardrobe" or v.Name == "Bed" or v.Name == "Double_Bed" then
+if v.PrimaryPart then
+if v.PrimaryPart.Position.Y > -9 then
+local Distance = (LocalPlayer.Character.HumanoidRootPart.Position - v.PrimaryPart.Position).Magnitude
+if Distance < MaxDistance then
+closest = v
+MaxDistance = Distance 
+end
+end
+end
+end
+end
+end
+return closest
+end
+
 
 
 function fireInteract(prompt)
@@ -427,6 +454,42 @@ SettingsBox = Tabs.UISettings:AddRightGroupbox('UI')
 
 
 
+if Floor.Value == "Rooms" then
+
+function moveto(target)
+local path = PathfindingService:CreatePath({
+AgentRadius = 0.5,
+AgentHeight = 0.1,
+AgentCanJump = false,
+WaypointSpacing = 3
+})
+
+path:ComputeAsync(LocalPlayer.Character.HumanoidRootPart.Position, target.Position)
+if path.Status == Enum.PathStatus.Success  then
+for _, waypoint in ipairs(path:GetWaypoints()) do
+
+LocalPlayer.Character.Humanoid:MoveTo(waypoint.Position)
+
+LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
+
+
+
+
+end
+
+end
+
+
+end
+
+
+
+FloorAnti:AddToggle('AutoRooms',{
+Text = "Auto Rooms",
+Default = false
+})
+
+end
 SettingsBox:AddToggle('FpsUnlocker',{
      Text = "Fps Unlocker",
      Default = true,
@@ -1556,30 +1619,6 @@ end
 end
 end
 })
-function GetNearestCloset()
-
-
-local closest = nil
-local MaxDistance = math.huge
-local assets = workspace.CurrentRooms[LocalPlayer:GetAttribute("CurrentRoom")]:FindFirstChild("Assets",true)
-if assets then
-for _, v in ipairs(assets:GetChildren()) do
-
-if v.Name == "Wardrobe" or v.Name == "Rooms_Locker" or v.Name == "Rooms_Locker_Fridge" or v.Name == "Toolshed" or v.Name == "Locker_Large" or v.Name == "Backdoor_Wardrobe" or v.Name == "Bed" or v.Name == "Double_Bed" then
-if not v.Main:FindFirstChild("HideEntityOnSpot") then
-if v.PrimaryPart then
-local Distance = (LocalPlayer.Character.HumanoidRootPart.Position - v.PrimaryPart.Position).Magnitude
-if Distance < MaxDistance then
-closest = v
-MaxDistance = Distance 
-end
-end
-end
-end
-end
-end
-return closest
-end
 
 local EntitysTable = {
 RushMoving = 85,
@@ -3519,10 +3558,58 @@ print("RenderStepped")
 -- here
 
 
+local Danger = workspace:FindFirstChild("A60") or workspace:FindFirstChild("A120")
 
 table.insert(Connections,RunService.RenderStepped:Connect(function()
 alive = LocalPlayer:GetAttribute("Alive")
 if alive then
+
+if Toggles.AutoRooms and Toggles.AutoRooms.Value then
+
+if  Danger  and Danger.PrimaryPart and Danger.PrimaryPart.Position.Y > -9 then
+local Locker = GetNearestCloset()
+
+if Locker then
+
+if not Locker:FindFirstChild("Hide") then
+local Part = Instance.new("Part",Locker)
+Part.Position = Locker.PrimaryPart.Position + Locker.PrimaryPart.CFrame.LookVector * 7
+Part.Size = Vector3.new(1, 1, 1)
+Part.CanCollide = false
+Part.Transparency = 1
+Part.Anchored = true
+Part.Name = "Hide"
+end
+
+moveto(Locker:WaitForChild("Hide"))
+if not LocalPlayer.Character.CollisionPart.Anchored then
+
+fireproximityprompt(Locker:WaitForChild("HidePrompt"))
+end
+
+end
+
+elseif not Danger or Danger.PrimaryPart.Position.Y < -9 then
+LocalPlayer.Character:SetAttribute("Hiding",false)
+
+moveto(workspace.CurrentRooms[game.ReplicatedStorage.GameData.LatestRoom.Value].Door.Door)
+
+
+
+
+
+
+
+end
+
+
+
+end
+
+
+
+
+
 
 
 if Toggles.AutoInteract.Value then
@@ -4409,6 +4496,8 @@ end);
 
 
 function Unload()
+LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position)
+
 LocalPlayer:SetAttribute("mshaxLoaded",false)
 Library.Unloaded = true
 Library:Unload()
@@ -4458,6 +4547,13 @@ if roomConn then
 roomConn:Disconnect()
 roomConn = nil
 end
+
+if AutoRoomsConnection
+then
+AutoRoomsConnection:Disconnect()
+AutoRoomsConnection = nil
+end
+
 
 if conn then
 conn:Disconnect()
