@@ -2217,6 +2217,7 @@ local AnchorHintFrame = MainUI:WaitForChild("AnchorHintFrame")
                 end
 
                 -- Process code depending on whether Note exists
+if foundAnchor then
                 local noteObj = foundAnchor:FindFirstChild("Note")
                 if not noteObj then
                     Library:Notify(("Anchor %s Code is %s"):format(foundAnchor.Sign.TextLabel.Text, currentCode), 3)
@@ -2235,6 +2236,7 @@ local AnchorHintFrame = MainUI:WaitForChild("AnchorHintFrame")
                 end
             end
         end
+end
     })
 
 
@@ -3511,11 +3513,18 @@ end)
 
 print("RenderStepped")
 
-task.spawn(function()
 
-while task.wait(0.16) do
-if Library.Unloaded == true then break end
-if LocalPlayer:GetAttribute("Alive") == true then
+
+
+-- here
+
+
+
+table.insert(Connections,RunService.RenderStepped:Connect(function()
+alive = LocalPlayer:GetAttribute("Alive")
+if alive then
+
+
 if Toggles.AutoInteract.Value then
 for _, prompt in ipairs(AutoInteractTable) do
 if prompt and prompt.Parent then
@@ -3560,7 +3569,6 @@ end
 end
 end
 
-end
 if Toggles.TransparencyCloset.Value then
 
 
@@ -3588,17 +3596,6 @@ end
 
 
 end
-
-
-
--- here
-
-end
-end)
-
-table.insert(Connections,RunService.RenderStepped:Connect(function()
-alive = LocalPlayer:GetAttribute("Alive")
-if alive then
 
 
 
