@@ -37,7 +37,7 @@ Debris:AddItem(sound,2)
 
 
 end
-
+Sound()
 
 
 
@@ -69,8 +69,12 @@ repo = 'https://raw.githubusercontent.com/mstudio45/Obsidian/main/'
 else
 repo = 'https://raw.githubusercontent.com/mstudio45/Obsidian/main/'
 end
-local Executor = identifyexecutor()  or getexecutorname() 
+local Executor = identifyexecutor()  or getexecutorname() or "Unknown"
 local Library =  loadstring(game:HttpGet(repo..'Library.lua'))()
+
+Library:Notify("Loading mshax for DOORS",5)
+
+task.wait(1.5)
 local success, result = pcall(function()
 return RequiredMainGame
 end)
@@ -213,12 +217,10 @@ end
 end
 
 end)
--- Services
-
 -- Variables
 
 LocalPlayer:SetAttribute("mshaxLoaded",true)
-LocalPlayer.Character.Archivable = true
+
 
  Floor = ReplicatedStorage.GameData.Floor
  RemoteFolder = ReplicatedStorage:FindFirstChild("RemotesFolder") or ReplicatedStorage:FindFirstChild("Bricks") or ReplicatedStorage:FindFirstChild("EntityInfo")
@@ -227,7 +229,10 @@ LocalPlayer.Character.Archivable = true
  RemoteListener = MainGame.RemoteListener
  Modules = RemoteListener.Modules
 
- ClientModules = game:GetService("ReplicatedStorage"):FindFirstChild("ModulesClient") or game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules") Modifiers = ReplicatedStorage:WaitForChild("LiveModifiers")
+ ClientModules = game:GetService("ReplicatedStorage"):FindFirstChild("ModulesClient") or game:GetService("ReplicatedStorage"):FindFirstChild("ClientModules") 
+if ReplicatedStorage:FindFirstChild("RemotesFolder") then 
+Modifiers = ReplicatedStorage:WaitForChild("LiveModifiers")
+end
  Fog = Lighting:FindFirstChild("Fog") or Lighting:FindFirstChild("CaveAtmosphere")
  CollisionClone = nil
  CollisionClone2 = nil
@@ -848,7 +853,9 @@ end
 })
 
 
-local dropRemote = RemoteFolder:WaitForChild("DropItem")
+if ReplicatedStorage:FindFirstChild("RemotesFolder") then
+local dropRemote = RemoteFolder:FindFirstChild("DropItem")
+
 
 function addFake(prompt, mode)
 	if not prompt or not prompt:IsA("ProximityPrompt") then return end
@@ -966,7 +973,7 @@ Disabled = Disable3,
 		
 	end
 })
-
+end
 
 Movement:AddDivider()
  Speed = 15
@@ -1027,19 +1034,7 @@ LocalPlayer.Character.HumanoidRootPart.CanCollide = true
 end
 
 end)
-if ReplicatedStorage:FindFirstChild("EntityInfo") or ReplicatedStorage:FindFirstChild("Bricks") then
-Movement:AddToggle('Godmode',{
-     Text = "Godmode",
-     Default = false,
-Callback = function(Value)
-if Value then
-Character.Collision.Position = Character.Collision.Position - Vector3.new(0,5.5,0)
-else
-Character.Collision.Position = Character.Collision.Position + Vector3.new(0,5.5,0)
-end
-end
-})
-end
+
 Movement:AddDivider()
 Movement:AddToggle('EnableJump',{
      Text = "Enable Jump",
@@ -1901,9 +1896,10 @@ Anti:AddToggle('AntiDread',{
      Default = false,
 Callback = function(Value)
 local Dread = Modules:FindFirstChild("Dread") or Modules:FindFirstChild("_Dread")
+if Dread then
 Dread.Name = Value and "_Dread" or "Dread"
 
-
+end
 end
 })
 
@@ -1924,8 +1920,10 @@ Anti:AddToggle('AntiA90',{
      Default = false,
 Callback = function(Value)
 local A90 = Modules:FindFirstChild("A90") or Modules:FindFirstChild("_A90")
+if A90 then
 A90.Name = Value and "_A90" or "A90"
 
+end
 end
 })
 
@@ -1998,7 +1996,21 @@ end
 local hitted = false
 
 
-local Delay = 0.216
+local Delay = 0.215
+
+Bypass:AddSlider("SpeedBypassDelay", {
+        Text = "Speed Bypass Interval",
+        Default = 0.215,
+        Min = 0.21,
+        Max = 0.23,
+        Rounding = 2,
+        Compact = true,
+
+        Callback = function(Value)
+          Delay = Value
+
+     end,      
+})
 
 Bypass:AddToggle('SpeedBypass',{
      Text = "Speed Bypass",
@@ -2043,20 +2055,9 @@ end,
 })
 
 
-Bypass:AddSlider("SpeedBypassDelay", {
-        Text = "Speed Bypass Interval",
-        Default = Delay,
-        Min = 0.2,
-        Max = 0.23,
-        Rounding = 1,
-        Compact = true,
 
-        Callback = function(Value)
-          Delay = Value
-
-     end,      
-})
 Bypass:AddDivider()
+if  ReplicatedStorage:FindFirstChild("RemotesFolder") then 
 Bypass:AddToggle('GodMode',{
      Text = "God Mode",
      Default = false,
@@ -2140,7 +2141,7 @@ Bypass:AddToggle('AnticheatManipulation',{
 		ChangedCallback = function(New)
 		end
 	})
-
+end
 
 
 
@@ -2447,7 +2448,7 @@ ModifiersBox:AddToggle('AntiJam',{
      Default = false,
 Callback = function(Value)
 
-		if not Modifiers:FindFirstChild("Jammin") then return end
+		if Modifiers and not Modifiers:FindFirstChild("Jammin") then return end
 		local mainTrack = game["SoundService"]:FindFirstChild("Main")
 		if mainTrack then
 			local jamming = mainTrack:FindFirstChild("Jamming")
@@ -3263,45 +3264,45 @@ Toggles.EntityNotifys:OnChanged(function(Value)
 if Value then
 for _, v in ipairs(workspace:GetChildren()) do
 if v.Name == "RushMoving" and Options.EntitiesPicker.Value["Rush"] then
-Notify("Rush Has Spawned",3)
+Notify("Rush Has Spawned,  Find A hidingSpot",3)
 Sound()
 end
 if v.Name == "BackdoorRush" and Options.EntitiesPicker.Value["Blitz"] then
-Notify("Blitz Has Spawned",3)
+Notify("Blitz Has Spawned, Find A hidingSpot",3)
 Sound()
 end
 
 if v.Name == "AmbushMoving" and Options.EntitiesPicker.Value["Ambush"] then
-Notify("Ambush Has Spawned",3)
+Notify("Ambush Has Spawned, Find A hidingSpot",3)
 Sound()
 end
 
 if v.Name == "A60" and Options.EntitiesPicker.Value["A-60"] then
-Notify("A-60 Has Spawned",3)
+Notify("A-60 Has Spawned, Find A hidingSpot",3)
 Sound()
 end
 
 if v.Name == "A120" and Options.EntitiesPicker.Value["A-120"] then
-Notify("A-120 Has Spawned",3)
+Notify("A-120 Has Spawned, Find A Hiding Spot",3)
 Sound()
 end
 
 if v.Name == "Eyes" and Options.EntitiesPicker.Value["Eyes"] then
-Notify("Eyes Has Spawned",3)
+Notify("Eyes Has Spawned Avoid Looking at it",3)
 Sound()
 end
 
 if v.Name == "GlitchRush" and Options.EntitiesPicker.Value["GlitchRush"] then
-Notify("GlitchRush Has Spawned",3)
+Notify("GlitchRush Has Spawned, Find a Hiding Spot",3)
 Sound()
 end
 if v.Name == "GlitchAmbush" and Options.EntitiesPicker.Value["GlitchAmbush"] then
-Notify("GlitchAmbush Has Spawned",3)
+Notify("GlitchAmbush Has Spawned, Find A hidingSpot",3)
 Sound()
 end
 
 if v.Name == "MonumentEntity" and Options.EntitiesPicker.Value["Monument"] then
-Notify("Monument Has spawned",3)
+Notify("Monument Has spawned, Look At It",3)
 Sound()
 end
 
@@ -3343,45 +3344,45 @@ end)
 table.insert(Connections,workspace.ChildAdded:Connect(function(v)
 if  Toggles.EntityNotifys.Value then  
 if v.Name == "RushMoving" and Options.EntitiesPicker.Value["Rush"] then
-Notify("Rush Has Spawned",3)
+Notify("Rush Has Spawned, Find A hidingSpot",3)
 Sound()
 end
 if v.Name == "BackdoorRush" and Options.EntitiesPicker.Value["Blitz"] then
-Notify("Blitz Has Spawned",3)
+Notify("Blitz Has Spawned, Find A hidingSpot",3)
 Sound()
 end
 
 if v.Name == "AmbushMoving" and Options.EntitiesPicker.Value["Ambush"] then
-Notify("Ambush Has Spawned",3)
+Notify("Ambush Has Spawned, Find A hidingSpot",3)
 Sound()
 end
 
 if v.Name == "A60" and Options.EntitiesPicker.Value["A-60"] then
-Notify("A-60 Has Spawned",3)
+Notify("A-60 Has Spawned, Find A hidingSpot",3)
 Sound()
 end
 
 if v.Name == "A120" and Options.EntitiesPicker.Value["A-120"] then
-Notify("A-120 Has Spawned",3)
+Notify("A-120 Has Spawned, Find A hidingSpot",3)
 Sound()
 end
 
 if v.Name == "Eyes" and Options.EntitiesPicker.Value["Eyes"] then
-Notify("Eyes Has Spawned",3)
+Notify("Eyes Has Spawned,Look At it",3)
 Sound()
 end
 
 if v.Name == "GlitchRush" and Options.EntitiesPicker.Value["GlitchRush"] then
-Notify("GlitchRush Has Spawned",3)
+Notify("GlitchRush Has Spawned, Find A hidingSpot",3)
 Sound()
 end
 if v.Name == "GlitchAmbush" and Options.EntitiesPicker.Value["GlitchAmbush"] then
-Notify("GlitchAmbush Has Spawned",3)
+Notify("GlitchAmbush Has Spawned, Find A hidingSpot",3)
 Sound()
 end
 
 if v.Name == "MonumentEntity" and Options.EntitiesPicker.Value["Monument"] then
-Notify("Monument Has spawned",3)
+Notify("Monument Has spawned, Look At It",3)
 Sound()
 end
 
@@ -3507,6 +3508,91 @@ end)
 
 print("RenderStepped")
 
+task.spawn(function()
+
+while task.wait(0.16) do
+if Library.Unloaded == true then break end
+if LocalPlayer:GetAttribute("Alive") == true then
+if Toggles.AutoInteract.Value then
+for _, prompt in ipairs(AutoInteractTable) do
+if prompt and prompt.Parent then
+
+local check = prompt:GetAttribute("Interactions")
+if not check or check < 1 then
+local Base
+if prompt.Parent:IsA("BasePart") then
+Base = prompt.Parent
+elseif prompt.Parent.Parent and  prompt.Parent.Parent:IsA("BasePart") then
+Base = prompt.Parent.Parent
+elseif prompt.Parent and  prompt.Parent:FindFirstChildWhichIsA("BasePart") then
+Base = prompt.Parent:FindFirstChildWhichIsA("BasePart")
+else
+if prompt.Parent.Parent and prompt.Parent.Parent:FindFirstChildOfClass("BasePart") then
+Base = prompt.Parent.Parent:FindFirstChildOfClass("BasePart")
+end
+end
+if Base and (LocalPlayer.Character.HumanoidRootPart.Position - Base.Position).Magnitude < prompt.MaxActivationDistance then
+
+if prompt.Parent and prompt.Parent.Name == "GoldPile" and Options.IgnoreList.Value["Gold"] then return end
+if prompt.Parent:GetAttribute("JeffShop")  and Options.IgnoreList.Value["Jeff Items"] then return end
+if prompt.Parent.Parent and prompt.Parent.Parent.Name == "Drops" and Options.IgnoreList.Value["Drops"] then return end
+if prompt.Name == "ModulePrompt" and prompt.Parent and prompt.Parent.Name == "Hole" then return end
+if prompt.Name == "ModulePrompt" and prompt.Parent and prompt.Parent.Name == "Mandrake" then return end
+
+
+if prompt.Parent and prompt.Parent.Name == "Padlock" then return end
+
+
+if prompt.ClickablePrompt then
+
+fireInteract(prompt)
+
+end
+end
+
+
+
+end
+end
+end
+end
+
+end
+if Toggles.TransparencyCloset.Value then
+
+
+if Closet then
+
+  
+for _, v in ipairs(Closet:GetChildren()) do
+
+if v:IsA("BasePart") and  not (v.Name == "PlayerCollision" or v.Name == "Collision") then
+
+v.Transparency = TransparencyValue
+
+
+end
+
+
+
+
+end
+
+
+
+end
+
+
+
+end
+
+
+
+-- here
+
+end
+end)
+
 table.insert(Connections,RunService.RenderStepped:Connect(function()
 alive = LocalPlayer:GetAttribute("Alive")
 if alive then
@@ -3566,7 +3652,7 @@ Toggles.NoCutscenes:SetValue(false)
 end
 end
 
-if Toggles.InfiniteItems.Value then
+if Toggles.InfiniteItems and Toggles.InfiniteItems.Value then
 local hasTool = Character:FindFirstChild("Lockpick") or Character:FindFirstChild("SkeletonKey")
 				if hasTool then
 
@@ -3578,7 +3664,7 @@ local hasTool = Character:FindFirstChild("Lockpick") or Character:FindFirstChild
 
 				end
 			end
-if Toggles.InfiniteSItems.Value then
+if Toggles.InfiniteSItems and Toggles.InfiniteSItems.Value then
 local hasTool =  LocalPlayer.Character:FindFirstChild("Shears")
 				if hasTool then
 
@@ -3591,49 +3677,6 @@ local hasTool =  LocalPlayer.Character:FindFirstChild("Shears")
 				end
 			end
 
-if Toggles.AutoInteract.Value then
-for _, prompt in ipairs(AutoInteractTable) do
-if prompt and prompt.Parent then
-
-local check = prompt:GetAttribute("Interactions")
-if not check or check < 1 then
-local Base
-if prompt.Parent:IsA("BasePart") then
-Base = prompt.Parent
-elseif prompt.Parent.Parent and  prompt.Parent.Parent:IsA("BasePart") then
-Base = prompt.Parent.Parent
-elseif prompt.Parent and  prompt.Parent:FindFirstChildWhichIsA("BasePart") then
-Base = prompt.Parent:FindFirstChildWhichIsA("BasePart")
-else
-if prompt.Parent.Parent and prompt.Parent.Parent:FindFirstChildOfClass("BasePart") then
-Base = prompt.Parent.Parent:FindFirstChildOfClass("BasePart")
-end
-end
-if Base and (LocalPlayer.Character.HumanoidRootPart.Position - Base.Position).Magnitude < prompt.MaxActivationDistance then
-
-if prompt.Parent and prompt.Parent.Name == "GoldPile" and Options.IgnoreList.Value["Gold"] then return end
-if prompt.Parent:GetAttribute("JeffShop")  and Options.IgnoreList.Value["Jeff Items"] then return end
-if prompt.Parent.Parent and prompt.Parent.Parent.Name == "Drops" and Options.IgnoreList.Value["Drops"] then return end
-if prompt.Name == "ModulePrompt" and prompt.Parent and prompt.Parent.Name == "Hole" then return end
-if prompt.Name == "ModulePrompt" and prompt.Parent and prompt.Parent.Name == "Mandrake" then return end
-
-
-if prompt.Parent and prompt.Parent.Name == "Padlock" then return end
-
-
-if prompt.ClickablePrompt then
-
-fireInteract(prompt)
-
-end
-end
-
-
-
-end
-end
-end
-end
 
 
 if Toggles.Noacceleration.Value then
@@ -3648,39 +3691,12 @@ end
 
 
 
-if Toggles.TransparencyCloset.Value then
-
-
-if Closet then
-
-  
-for _, v in ipairs(Closet:GetChildren()) do
-
-if v:IsA("BasePart") and  not (v.Name == "PlayerCollision" or v.Name == "Collision") then
-
-v.Transparency = TransparencyValue
-
-
-end
-
-
-
-
-end
-
-
-
-end
-
-
-
-end
 
 Lighting.Brightness = 1.5
 Lighting.GlobalShadows = not Toggles.Fullbright.Value
 
 
-if Toggles.AntiHear.Value then
+if Toggles.AntiHear.Value and ReplicatedStorage:FindFirstChild("RemotesFolder") then
 RemoteFolder.Crouch:FireServer(true)
 end
 
@@ -3688,7 +3704,11 @@ end
 if Toggles.Noclip.Value then
 if alive then
 LocalPlayer.Character.Collision.CanCollide = false
+if LocalPlayer.Character.Collision:FindFirstChild("CollisionCrouch") then
 LocalPlayer.Character.Collision.CollisionCrouch.CanCollide = false
+
+end
+
 LocalPlayer.Character.HumanoidRootPart.CanCollide = false
 end
 end
@@ -3740,10 +3760,7 @@ end
 end
 end
 
-if Toggles.GodMode.Value then
-Character.Collision.CollisionCrouch.CanCollide = false
 
-end
 
 if Toggles.AnticheatManipulation.Value then
 if alive then
@@ -3880,12 +3897,21 @@ end
 end
 
 
-
+if Toggles.AntiVacuum.Value then
+for _, v in ipairs(workspace.CurrentRooms:GetChildren()) do
+if v.Name == "SideroomSpace" then
+v:WaitForChild("Collision").CanTouch = false
+v:WaitForChild("Collision").CanCollide = true
+end
+end
+end
 
 
 if Toggles.Door.Value then
+
+if ReplicatedStorage:FindFirstChild("RemotesFolder") then 
 local room = LocalPlayer:GetAttribute("CurrentRoom")
-if room and room > 0 then
+if room and tostring(room > 0) then
 local lastroom = room - 1
 local Door = workspace.CurrentRooms[lastroom].Door.Door
 if Door then
@@ -3894,6 +3920,9 @@ ESPLibrary:RemoveESP(Door)
 end
 
 end
+
+end
+
 
 
 local Door = workspace.CurrentRooms[LocalPlayer:GetAttribute("CurrentRoom")].Door.Door
@@ -3950,6 +3979,7 @@ AddESP(v,"TimerLever",TimerLeverColor)
 end
 end
 if Toggles.HidingSpot.Value then
+if ReplicatedStorage:FindFirstChild("RemotesFolder") then
 local room = LocalPlayer:GetAttribute("CurrentRoom")
 if room and room > 0 then
 local lastroom = room - 1
@@ -3961,6 +3991,10 @@ ESPLibrary:RemoveESP(v)
 end
 end
 end
+
+end
+
+
 
 
 for _, v in ipairs(workspace.CurrentRooms[LocalPlayer:GetAttribute("CurrentRoom")]:FindFirstChild("Assets",true):GetChildren()) do
@@ -4001,7 +4035,7 @@ local ImportantNames = {
     Seek_Arm = true,
     
     Egg = true,
-    SideroomSpace = true,
+    
     LiveHintBook = true,
     LiveBreakerPolePickup = true,
     Lever = true,
@@ -4171,7 +4205,7 @@ end
 
 
 
-if Toggles.InfiniteSItems.Value then
+if Toggles.InfiniteSItems and Toggles.InfiniteSItems.Value then
 
 if ShearsParents[v.Name] or ShearsNames[v.Name] then
 if v:IsA("ProximityPrompt") then
@@ -4182,7 +4216,7 @@ end
 end
 end
 
-if Toggles.InfiniteItems.Value then
+if Toggles.InfiniteItems and Toggles.InfiniteItems.Value then
 
 if LockpickNames[v.Name] or LockpickParents[v.Name] then
 if v:IsA("ProximityPrompt") then
@@ -4246,17 +4280,9 @@ end
 end
 
 
-if Toggles.AntiVacuum.Value then
-if v.Name == "SideroomSpace" then
-for _, part in ipairs(v:GetChildren()) do
-if part:IsA("BasePart") then
-part.CanTouch = false
-part.CanCollide = true
-end
-end
-end
 
-end
+
+
 if Toggles.Anchor and Toggles.Anchor.Value then
 if v.Name == "MinesAnchor" then
 AddESP(v,"Anchor" .. v:WaitForChild("Sign").TextLabel.Text,AnchorColor)
@@ -4548,7 +4574,7 @@ end
 
 CleanUp = LocalPlayer.Character.ChildAdded:Connect(function(v)
 
-if v.Name == "Key" then
+if v.Name == "Key" and ReplicatedStorage:FindFirstChild("RemotesFolder") then 
 
 cleanupEnableReal()
 
@@ -4709,3 +4735,167 @@ SaveManager:GetAutoloadConfig()
 SaveManager:LoadAutoloadConfig()
 SaveManager:SaveAutoloadConfig(file_path)
 end
+if game.PlaceId == 3101667897 then
+game.Players.LocalPlayer:SetAttribute("mshaxLoaded",true)
+
+getgenv().LibraryIs = getgenv().LibraryIs or nil
+local repo
+if getgenv().LibraryIs == "Linoria" then
+ repo = 'https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/'
+elseif getgenv().LibraryIs == "Obsidian" then
+repo = 'https://raw.githubusercontent.com/mstudio45/Obsidian/main/'
+else
+repo = 'https://raw.githubusercontent.com/mstudio45/Obsidian/main/'
+end
+local Executor = identifyexecutor()  or getexecutorname() 
+local Library =  loadstring(game:HttpGet(repo..'Library.lua'))()
+Library:Notify("Loading mshax for Legends of speed ",5)
+task.wait(1.5)
+Sound()
+
+
+ThemeManager = loadstring(game:HttpGet(repo..'addons/ThemeManager.lua'))()
+SaveManager  = loadstring(game:HttpGet(repo..'addons/SaveManager.lua'))()
+Options = Library.Options
+Toggles = Library.Toggles
+local ESPLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/bocaj111004/ESPLibrary/refs/heads/main/Library.lua"))()
+
+local Connections = {}
+
+
+Window = Library:CreateWindow({
+    Title = 'mshax v4 |LOS ',
+    Center = true,
+    AutoShow = true
+})
+
+Tabs = {
+	Main     = Window:AddTab('Main'),
+	UISettings = Window:AddTab('Config'),
+}
+local MainBox = Tabs.Main:AddRightGroupbox("Main")
+
+
+local SettingsBox = Tabs.UISettings:AddRightGroupbox("UI")
+
+MainBox:AddToggle("AutoFarm",{
+Text = "Auto Farm",
+Default = false
+})
+MainBox:AddToggle("AutoRebirth",{
+Text = "Auto Rebirth",
+Default = false
+})
+table.insert(Connections,RunService.RenderStepped:Connect(function()
+if Toggles.AutoFarm.Value then
+
+local args = {
+	"collectOrb",
+	"Blue Orb",
+	"City"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("rEvents"):WaitForChild("orbEvent"):FireServer(unpack(args))
+local args = {
+	"collectOrb",
+	"Red Orb",
+	"City"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("rEvents"):WaitForChild("orbEvent"):FireServer(unpack(args))
+local args = {
+	"collectOrb",
+	"Gem",
+	"City"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("rEvents"):WaitForChild("orbEvent"):FireServer(unpack(args))
+local args = {
+	"collectOrb",
+	"Yellow Orb",
+	"City"
+}
+
+game:GetService("ReplicatedStorage"):WaitForChild("rEvents"):WaitForChild("orbEvent"):FireServer(unpack(args))
+
+
+end
+if Toggles.AutoRebirth.Value then
+
+
+
+
+game:GetService("ReplicatedStorage").rEvents.rebirthEvent:FireServer()
+
+
+
+
+end
+
+
+end))
+SettingsBox:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu keybind" })
+
+Library.ToggleKeybind = Options.MenuKeybind 
+SettingsBox:AddToggle("ShowKeybinds", {
+		Text = "Show Keybinds",
+		Default = false,
+		Tooltip = "Toggle the visibility of the keybinds menu",
+	}):OnChanged(function()
+		Library.KeybindFrame.Visible = Toggles.ShowKeybinds.Value
+	end)
+
+SettingsBox:AddToggle("ShowCustomCursor", {
+		Text = "Show Custom Cursor",
+		Default = Library.IsMobile == true and true or false,
+		Tooltip = "Toggle the visibility of the Cursor",
+	}):OnChanged(function()
+		Library.ShowCustomCursor = Toggles.ShowCustomCursor.Value
+	end)
+
+	local Contributors = Tabs.UISettings:AddRightGroupbox("Credits")
+	Contributors:AddLabel("KardinCat - Creator",true)
+
+
+function Unload()
+game.Players.LocalPlayer:SetAttribute("mshaxLoaded",false)
+
+Library.Unloaded = true
+Library:Unload()
+ESPLibrary:Unload()
+
+for _, con in pairs(Connections) do
+con:Disconnect()
+end
+
+
+end
+SettingsBox:AddButton({
+     Text = "Unload GUI",
+     Func = function()
+Unload()
+end
+})
+
+
+local folder_path = "Prohax"
+local file_path = "Legends Of Speed"
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({ 'MenuKeybind' })
+
+ThemeManager:SetFolder(folder_path)
+SaveManager:SetFolder(folder_path .. '/' .. file_path)
+SaveManager:SetSubFolder(file_path)
+
+SaveManager:BuildConfigSection(Tabs['UISettings'])
+ThemeManager:ApplyToTab(Tabs['UISettings'])
+
+
+
+
+
+
+
+
+
+end
+
