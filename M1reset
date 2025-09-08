@@ -30,7 +30,7 @@ if workspace:FindFirstChild("SpawnLiocation") then
 LocalPlayer:SetAttribute("MoveLocation",true)
 end
 
-local Door = workspace.CurrentRooms["1"].Door.Door
+local Door = workspace.CurrentRooms["0"].Door.Door
 Door.Parent:SetAttribute("Opened",false)
 
 RunService.RenderStepped:Connect(function()
