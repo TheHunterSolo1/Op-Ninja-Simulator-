@@ -63,7 +63,7 @@ replicatesignal(LocalPlayer.Kill)
 end 
 end
 end)
-LocalPlayer.Character.Humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+LocalPlayer.Character.Humanoid.Died:Connect(function()
 if LocalPlayer.Character.Humanoid.Health == 0 then
 game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer() end
 end)
