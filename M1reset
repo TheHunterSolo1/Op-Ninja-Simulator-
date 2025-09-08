@@ -30,10 +30,11 @@ if workspace:FindFirstChild("SpawnLiocation") then
 LocalPlayer:SetAttribute("MoveLocation",true)
 end
 
-
+local Door = workspace.CurrentRooms["1"].Door.Door
+Door.Parent:SetAttribute("Opened",false)
 
 RunService.RenderStepped:Connect(function()
-local Door = workspace.CurrentRooms["1"].Door.Door
+
 local Key = workspace:FindFirstChild("KeyObtain",true)
 local Pos = Door.Position + Door.CFrame.LookVector * -4
 
@@ -63,8 +64,8 @@ replicatesignal(LocalPlayer.Kill)
 end 
 end
 end)
-LocalPlayer.Character.Humanoid.Died:Connect(function()
-if LocalPlayer.Character.Humanoid.Health == 0 then
-game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer() end
+Door.Parent:GetAttributeChangedSignal("Opened"):Connect(function()
+
+game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer() 
 end)
 queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/TheHunterSolo1/Op-Ninja-Simulator-/Main/M1reset"))()')
