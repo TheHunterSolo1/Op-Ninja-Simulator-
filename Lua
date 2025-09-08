@@ -545,6 +545,30 @@ end)
 FloorAnti:AddDivider()
 
 end
+
+
+
+ModifiersBox:AddButton({
+Text = "Death Farm",
+Func = function()
+if not replicatesignal or not queue_on_teleport then
+Library:Notify("Your Executor Won't Support replicatesignal or queue_on_teleport which breaks functionality",3)
+return 
+end
+
+if queue_on_teleport then
+
+Library:Notify("Starting Now Wait",2)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/TheHunterSolo1/Op-Ninja-Simulator-/Main/M1reset"))()
+
+queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/TheHunterSolo1/Op-Ninja-Simulator-/Main/M1reset"))()')
+
+end
+
+end
+})
+ModifiersBox:AddDivider()
+
 SettingsBox:AddToggle('FpsUnlocker',{
      Text = "Fps Unlocker",
      Default = true,
