@@ -65,11 +65,11 @@ local Pathnode
 getgenv().LibraryIs = getgenv().LibraryIs or nil
 local repo
 if getgenv().LibraryIs == "Linoria" then
- repo = 'https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/'
+ repo = 'https://raw.githubusercontent.com/bocaj111004/LinoriaLib/main/'
 elseif getgenv().LibraryIs == "Obsidian" then
-repo = 'https://raw.githubusercontent.com/mstudio45/Obsidian/main/'
+repo = 'https://raw.githubusercontent.com/bocaj111004/Obsidian/main/'
 else
-repo = 'https://raw.githubusercontent.com/mstudio45/Obsidian/main/'
+repo = 'https://raw.githubusercontent.com/bocaj111004/Obsidian/main/'
 end
 local Executor = identifyexecutor()  or getexecutorname() or "Unknown"
 local Library =  loadstring(game:HttpGet(repo..'Library.lua'))()
@@ -497,12 +497,12 @@ end
 
 function moveto(target)
 local path = PathfindingService:CreatePath({
-AgentRadius = 1.7,
+AgentRadius = 2,
 AgentHeight = 0.1,
 AgentCanClimb = true,
 
-AgentCanJump = false,
-WaypointSpacing = 3
+AgentCanJump = true,
+WaypointSpacing = 4.5
 })
 
 path:ComputeAsync(LocalPlayer.Character.HumanoidRootPart.Position, target.Position)
@@ -532,6 +532,22 @@ FloorAnti:AddToggle('AutoRooms',{
 Text = "Auto Rooms",
 Default = false
 })
+
+
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+
+local old = mt.__index
+mt.__index = newcclosure(function(t,k)
+    if k == "MoveDirection" and t:IsA("Humanoid") and t.Parent == LocalPlayer.Character and  Toggles.AutoRooms.Value and not LocalPlayer.Character:GetAttribute("Hiding") then
+        return Vector3.new(-2,0,0)
+    end
+    return old(t,k)
+end)
+
+setreadonly(mt, true)
+
+
 Toggles.AutoRooms:OnChanged(function(Value)
 
 
@@ -606,8 +622,27 @@ SettingsBox:AddDropdown("LibraryNotifySide", {
 
         
 })
-function Notify(txt,duration)
-Library:Notify(txt,duration)
+local OptionNotify = "Obsidian"
+function Notify(txt,desc,reason)
+if OptionNotify then 
+Library:Notify(txt,3)
+--[[
+elseif OptionNotify == "Doors" then
+local Achievement = game:GetService("Players").LocalPlayer.PlayerGui.MainUI.AchievementsHolder.Achievement:Clone()
+Achievement.Size = UDim2.new(0, 0, 0, 0)
+Achievement.Visible = true
+Achievement:WaitForChild("Sound",9e9):Play()
+Achievement:WaitForChild("Frame"):WaitForChild("Details").Title.Text = txt
+Achievement:WaitForChild("Frame"):WaitForChild("Details").Reason.Text = reason
+Achievement:WaitForChild("Frame"):WaitForChild("Details").Desc.Text = desc
+
+
+game:GetService("TweenService"):Create(Achievement,TweenInfo.new(1.5),{Size = UDim2.new(1, 0, 0, 0)}):Play()
+
+task.wait(1)
+Achievement:Destroy()
+]]
+end
 
 end
 
@@ -1578,7 +1613,7 @@ local function manageToggle(toggleName, mode,place)
 					end
 				end
 			else
-				Library:Notify("Library Code is "..code, 3)
+				Library:Notify("Library Code is "..code,3)
 			end
 		end
 	end
@@ -2191,10 +2226,10 @@ Library:Notify("Automatically Enabled Anti-Figure Hearing Needs to enabld for go
 end
 
 Character.Collision.Size = Vector3.new(1, 0.001, 3)
-Character.Humanoid.HipHeight = 0.01
+Character.Humanoid.HipHeight = 0.0001
 
 else
-
+LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
 Character.Collision.Size = Vector3.new(5.5, 3, 5)
 Character.Humanoid.HipHeight = 2.4
 
