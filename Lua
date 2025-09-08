@@ -1,6 +1,5 @@
 local Players = game:GetService("Players")
-
-local LocalPlayer = Players.LocalPlayer
+loval LocalPlayer = Players.LocalPlayer
 
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
@@ -65,7 +64,7 @@ local Pathnode
 getgenv().LibraryIs = getgenv().LibraryIs or nil
 local repo
 if getgenv().LibraryIs == "Linoria" then
- repo = 'https://raw.githubusercontent.com/bocaj111004/LinoriaLib/main/'
+ repo = 'https://raw.githubusercontent.com/bocaj111004/LinoraLib/main/'
 elseif getgenv().LibraryIs == "Obsidian" then
 repo = 'https://raw.githubusercontent.com/bocaj111004/Obsidian/main/'
 else
@@ -4991,11 +4990,11 @@ game.Players.LocalPlayer:SetAttribute("mshaxLoaded",true)
 getgenv().LibraryIs = getgenv().LibraryIs or nil
 local repo
 if getgenv().LibraryIs == "Linoria" then
- repo = 'https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/'
+ repo = 'https://raw.githubusercontent.com/bocaj111004/Linora/main/'
 elseif getgenv().LibraryIs == "Obsidian" then
-repo = 'https://raw.githubusercontent.com/mstudio45/Obsidian/main/'
+repo = 'https://raw.githubusercontent.com/bocaj111004/Obsidian/main/'
 else
-repo = 'https://raw.githubusercontent.com/mstudio45/Obsidian/main/'
+repo = 'https://raw.githubusercontent.com/bocaj111004/Obsidian/main/'
 end
 local Executor = identifyexecutor()  or getexecutorname() 
 local Library =  loadstring(game:HttpGet(repo..'Library.lua'))()
