@@ -76,7 +76,7 @@ local Library =  loadstring(game:HttpGet(repo..'Library.lua'))()
 
 Library:Notify("Loading mshax for DOORS",5)
 
-task.wait(1.5)
+task.wait(2)
 local success, result = pcall(function()
 return RequiredMainGame
 end)
@@ -170,6 +170,31 @@ end
 end
 end
 return closest
+end
+
+
+function GetNearestLocker()
+
+
+
+local closest = nil
+local MaxDistance = math.huge
+
+for _, v in ipairs(workspace.CurrentRooms:GetDescendants()) do
+
+if v.Name == "Rooms_Locker" or v.Name == "Rooms_Locker_Fridge" then
+if v.PrimaryPart then
+
+local Distance = (LocalPlayer.Character.HumanoidRootPart.Position - v.PrimaryPart.Position).Magnitude
+if Distance < MaxDistance then
+closest = v
+MaxDistance = Distance 
+end
+end
+end
+end
+return closest
+
 end
 
 
@@ -472,12 +497,12 @@ end
 
 function moveto(target)
 local path = PathfindingService:CreatePath({
-AgentRadius = 0.6,
+AgentRadius = 1.7,
 AgentHeight = 0.1,
 AgentCanClimb = true,
 
 AgentCanJump = false,
-WaypointSpacing = 1.5
+WaypointSpacing = 3
 })
 
 path:ComputeAsync(LocalPlayer.Character.HumanoidRootPart.Position, target.Position)
@@ -2503,6 +2528,11 @@ ModifiersBox:AddToggle('AntiFog',{
      Default = false
 })
 
+
+
+
+
+
 ModifiersBox:AddToggle('AntiGiggle',{
      Text = "Anti Giggle",
      Default = false,
@@ -3598,7 +3628,7 @@ Library:Notify("Disabled Auto Closet for auto rooms to work properly",4)
 
 end
 if  Workspace:FindFirstChild("A60") or Workspace:FindFirstChild("A120") or Workspace:FindFirstChild("GlitchRush") or Workspace:FindFirstChild("GlitchAmbush") then
-local Locker = GetNearestCloset()
+local Locker = GetNearestLocker()
 
 if Locker then
 
@@ -3931,6 +3961,14 @@ end
 
 if Fog then
 Fog.Density = (Toggles.AntiFog.Value and 0) or 0.94
+
+end
+if Toggles.AntiFog.Value then
+
+
+Lighting.FogEnd = 9e9
+
+
 end
 
 if Toggles.TransparencyCart.Value then
@@ -4552,14 +4590,17 @@ end
 
 LocalPlayer:SetAttribute("mshaxLoaded",false)
 Library.Unloaded = true
-Library:Unload()
-ESPLibrary:Unload() -- Nice
-for _, Connection in ipairs(Connections) do
-Connection:Disconnect()
-end
 for i, Toggle in ipairs(Toggles) do
 Toggle:SetValue(false)
 end
+for _, Connection in ipairs(Connections) do
+Connection:Disconnect()
+end
+
+Library:Unload()
+ESPLibrary:Unload() -- Nice
+
+
 if Character.HumanoidRootPart:FindFirstChild("FlyBodyVelocity") then
 
 Character.HumanoidRootPart:FindFirstChild("FlyBodyVelocity"):Destroy()
@@ -4567,6 +4608,8 @@ end
 if Character.HumanoidRootPart:FindFirstChild("FlyBodyGyro") then
 Character.HumanoidRootPart:FindFirstChild("FlyBodyGyro"):Destroy()
 end
+RemoteFolder.Crouch:FireServer(false)
+
 Character.Humanoid.PlatformStand = false 
 Character:SetAttribute("CanJump",false)
 if FakeSurge then
