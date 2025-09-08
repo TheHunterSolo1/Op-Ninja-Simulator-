@@ -1,31 +1,66 @@
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
+if not queue_on_teleport then
+ if getgenv().Library then
 
-local function createScreenGui()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "TeleportGui"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+getgenv().Library:Notify("Queue On teleport not Supported",4)
 
-    local teleportButton = Instance.new("TextButton")
-    teleportButton.Size = UDim2.new(0, 50, 0, 30) -- Smaller button
-    teleportButton.Position = UDim2.new(0, 10, 0.5, -15) -- Left side
-    teleportButton.Text = "Left"
-    teleportButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    teleportButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    teleportButton.Font = Enum.Font.GothamSemibold
-    teleportButton.TextSize = 14
-    teleportButton.Parent = screenGui
-
-    teleportButton.MouseButton1Click:Connect(function()
-        local character = localPlayer.Character
-        if character then
-            local rootPart = character:FindFirstChild("HumanoidRootPart")
-            if rootPart then
-                rootPart.CFrame = rootPart.CFrame * CFrame.new(-30, 0, 0)
-            end
-        end
-    end)
+end
+return
 end
 
-createScreenGui()
+
+if not replicatesignal then
+ if getgenv().Library then
+
+getgenv().Library:Notify("replicatesignal not Supported",4)
+
+end
+return
+end
+
+
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+if workspace:FindFirstChild("SpawnLiocation") then
+LocalPlayer:SetAttribute("MoveLocation",true)
+end
+
+
+
+RunService.RenderStepped:Connect(function()
+local Door = workspace.CurrentRooms["0"].Door.Door
+local Key = workspace:FindFirstChild("KeyObtain",true)
+local Pos = Door.Position + Door.CFrame.LookVector * -4
+
+if LocalPlayer.Character then
+
+LocalPlayer.Character.Collision.CanCollide = false
+
+
+
+if not LocalPlayer.Character:FindFirstChild("Key") then
+if Key then
+LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(Key.PrimaryPart.Position)
+fireproximityprompt(Key:FindFirstChildOfClass("ProximityPrompt"))
+end
+else
+LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(Pos)
+if Door.Parent:FindFirstChild("Lock") then
+if (LocalPlayer.Character.HumanoidRootPart.Position - Door.Parent.Lock.Position).Magnitude < 5.5 then
+fireproximityprompt(Door.Parent:FindFirstChild("Lock"):FindFirstChildOfClass("ProximityPrompt"))
+end
+end
+
+end
+
+if replicatesignal and Door.Parent:GetAttribute("Opened") then
+replicatesignal(LocalPlayer.Kill)
+end 
+end
+end)
+LocalPlayer.Character.Humanoid.Died:Connect(function()
+game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer()
+end)
+
