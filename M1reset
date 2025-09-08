@@ -1,5 +1,5 @@
 task.wait(5.5)
-
+repeat task.wait() until game.Players.LocalPlayer.Character 
 
 if not queue_on_teleport then
  if getgenv().Library then
