@@ -63,7 +63,8 @@ replicatesignal(LocalPlayer.Kill)
 end 
 end
 end)
-LocalPlayer.Character.Humanoid.Died:Connect(function()
-game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer()
+LocalPlayer.Character.Humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+if LocalPlayer.Character.Humanoid.Health == 0 then
+game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer() end
 end)
 queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/TheHunterSolo1/Op-Ninja-Simulator-/Main/M1reset"))()')
