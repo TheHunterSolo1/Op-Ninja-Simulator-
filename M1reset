@@ -34,7 +34,7 @@ local Door = workspace.CurrentRooms["0"].Door.Door
 Door.Parent:SetAttribute("Opened",false)
 
 RunService.RenderStepped:Connect(function()
-
+if workspace.CurrentRooms:FindFirstChildOfClass("Model") then
 local Key = workspace:FindFirstChild("KeyObtain",true)
 local Pos = Door.Position + Door.CFrame.LookVector * -4
 
@@ -62,6 +62,7 @@ end
 if replicatesignal and Door.Parent:GetAttribute("Opened") then
 replicatesignal(LocalPlayer.Kill)
 end 
+end
 end
 end)
 Door.Parent:GetAttributeChangedSignal("Opened"):Connect(function()
