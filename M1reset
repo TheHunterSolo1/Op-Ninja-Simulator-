@@ -1,4 +1,4 @@
-task.wait(2)
+task.wait(3)
 
 
 if not queue_on_teleport then
