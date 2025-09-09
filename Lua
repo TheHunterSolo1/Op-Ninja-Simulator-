@@ -2317,11 +2317,15 @@ Library:Notify("Automatically Enabled Anti-Figure Hearing Needs to enabld for go
 end
 
 Character.Collision.Size = Vector3.new(1, 0.001, 3)
+
+Character.Collision.CollisionCrouch.Size = Vector3.new(1, 0.001, 3)
+
 Character.Humanoid.HipHeight = 0.0001
 
 else
 LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
 Character.Collision.Size = Vector3.new(5.5, 3, 5)
+Character.Collision.CollisionCrouch.Size = Vector3.new(5.5, 3, 5)
 Character.Humanoid.HipHeight = 2.4
 
 
