@@ -1,420 +1,70 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-local ts = game:GetService("TweenService")
-local rs = game:GetService("RunService")
+task.wait(5.5)
+repeat task.wait() until game.Players.LocalPlayer.Character 
+
+if not queue_on_teleport then
+ if getgenv().Library then
+
+getgenv().Library:Notify("Queue On teleport not Supported",4)
+
+end
+return
+end
+
+
+if not replicatesignal then
+ if getgenv().Library then
+
+getgenv().Library:Notify("replicatesignal not Supported",4)
+
+end
+return
+end
+
+
+
 local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
-local ws = workspace
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
--- Connection variables & flags
-local con4, autoGunLoop, coinReachConn
-local tweenActive = false
-local autoGunBusy = false
-local coinOrig = {}
-local coinsReachEnabled = false
-
--- Global ESP flags & loop control (combined)
-local innocentActive = false
-local sheriffActive = false
-local murdererActive = false
-local gunESPActive = false
-local espLoopRunning = false
-
--- Dropdown selection for coin farm method (Safe Method vs Not Safe Method)
-local coinFarmMethod = "Safe Method"
-
-local Window = Rayfield:CreateWindow({
-    Name = "Money Hub (0.1)",
-    Icon = 0,
-    LoadingTitle = "Loading Best MM2 Script",
-    LoadingSubtitle = "by Money",
-    Theme = "Default",
-    DisableRayfieldPrompts = false,
-    DisableBuildWarnings = false,
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "Luau",
-        FileName = "Big Bro"
-    },
-    Discord = {
-        Enabled = true,
-        Invite = "KvvHREvB",
-        RememberJoins = true
-    },
-    KeySystem = true,
-    KeySettings = {
-        Title = "Untitled",
-        Subtitle = "Key System",
-        Note = "https://discord.gg/KvvHREvB",
-        FileName = "Key",
-        SaveKey = true,
-        GrabKeyFromSite = true,
-        Key = {"MoneyProYe"}
-    }
-})
-
-local Tab = Window:CreateTab("ESP", 4483362458)
-local Auto = Window:CreateTab("Auto", 4483362458)
-local Section = Auto:CreateSection("Auto")
-
-Rayfield:Notify({
-    Title = "When ESP Shows all Innocent disable them all and enable them again",
-    Content = "Your Great",
-    Duration = 6.5,
-    Image = nil,
-})
-
-----------------------------------------------------------------
--- Dropdown: Coin Farm Method Selection
-----------------------------------------------------------------
-local CoinFarmMethodDropdown = Auto:CreateDropdown({
-    Name = "Coin Farm Method",
-    Options = {"Safe Method", "Not Safe Method"},
-    CurrentOption = "Safe Method",
-    Callback = function(selected)
-        coinFarmMethod = selected
-    end,
-})
-
-----------------------------------------------------------------
--- Helper Functions for BillboardGui (smaller TextLabel)
-----------------------------------------------------------------
-local function addBill(p)
-    if p.Character and p.Character:FindFirstChild("Head") and not p.Character:FindFirstChild("NameBillboard") then
-        local bb = Instance.new("BillboardGui")
-        bb.Name = "NameBillboard"
-        bb.Adornee = p.Character.Head
-        bb.Size = UDim2.new(0,70,0,30)  -- reduced size
-        bb.StudsOffset = Vector3.new(0,3,0)
-        bb.AlwaysOnTop = true
-        local tl = Instance.new("TextLabel", bb)
-        tl.Size = UDim2.new(1,0,1,0)
-        tl.BackgroundTransparency = 1
-        tl.Text = p.Name
-        tl.TextColor3 = Color3.new(1,1,1)
-        tl.TextStrokeTransparency = 0.5
-        tl.Font = Enum.Font.SourceSansBold
-        tl.TextScaled = true
-        bb.Parent = p.Character
-    end
+if workspace:FindFirstChild("SpawnLiocation") then
+LocalPlayer:SetAttribute("MoveLocation",true)
 end
 
-local function remBill(p)
-    if p.Character and p.Character:FindFirstChild("NameBillboard") then
-        p.Character.NameBillboard:Destroy()
-    end
+
+Door.Parent:SetAttribute("Opened",false)
+
+RunService.RenderStepped:Connect(function()
+if workspace.CurrentRooms:FindFirstChildOfClass("Model") then
+local Door = workspace.CurrentRooms["0"].Door.Door
+
+local Key = workspace:FindFirstChild("KeyObtain",true)
+
+local Pos = Door.Position + Door.CFrame.LookVector * -4
+
+if LocalPlayer.Character then
+
+LocalPlayer.Character.Collision.CanCollide = false
+
+
+
+if not LocalPlayer.Character:FindFirstChild("Key") and Key then
+LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(Key.PrimaryPart.Position)
+fireproximityprompt(Key:FindFirstChildOfClass("ProximityPrompt"))
+elseif LocalPlayer.Character:FindFirstChild("Key") or not Key then
+LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(Pos)
+if Door.Parent:FindFirstChild("Lock") then
+if (LocalPlayer.Character.HumanoidRootPart.Position - Door.Parent.Lock.Position).Magnitude < 5.5 then
+fireproximityprompt(Door.Parent:FindFirstChild("Lock"):FindFirstChildOfClass("ProximityPrompt"))
+end
 end
 
-local function removeESPHighlights()
-    for _, p in pairs(Players:GetPlayers()) do
-        if p.Character then
-            local h = p.Character:FindFirstChild("Highlight")
-            if h then h:Destroy() end
-            remBill(p)
-        end
-    end
 end
 
-----------------------------------------------------------------
--- Combined ESP Loop (Priority: Murderer > Sheriff > Innocent)
-----------------------------------------------------------------
-local function startESPLoop()
-    if not espLoopRunning then
-        espLoopRunning = true
-        spawn(function()
-            while innocentActive or sheriffActive or murdererActive do
-                for _, p in pairs(Players:GetPlayers()) do
-                    if p ~= lp and p.Character then
-                        local hasGun = p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))
-                        local hasKnife = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
-                        if murdererActive and hasKnife then
-                            if not p.Character:FindFirstChild("Highlight") then
-                                local h = Instance.new("Highlight", p.Character)
-                                h.Enabled = true
-                                h.FillColor = Color3.new(1,0,0)
-                            end
-                            addBill(p)
-                        elseif sheriffActive and hasGun then
-                            if not p.Character:FindFirstChild("Highlight") then
-                                local h = Instance.new("Highlight", p.Character)
-                                h.Enabled = true
-                                h.FillColor = Color3.new(0,0,1)
-                            end
-                            addBill(p)
-                        elseif innocentActive and not (hasGun or hasKnife) then
-                            if not p.Character:FindFirstChild("Highlight") then
-                                local h = Instance.new("Highlight", p.Character)
-                                h.Enabled = true
-                                h.FillColor = Color3.new(0,1,0)
-                            end
-                            addBill(p)
-                        else
-                            if p.Character:FindFirstChild("Highlight") then
-                                p.Character.Highlight:Destroy()
-                            end
-                            remBill(p)
-                        end
-                    end
-                end
-                task.wait(0.2)
-            end
-            espLoopRunning = false
-            removeESPHighlights()
-        end)
-    end
 end
-
-local function stopESPLoopIfNeeded()
-    if not (innocentActive or sheriffActive or murdererActive) then
-        espLoopRunning = false
-        removeESPHighlights()
-    end
 end
+end)
+LocalPlayer.Character.Humanoid.Died:Connect(function()
 
-----------------------------------------------------------------
--- ESP Toggles (Combined Loop)
-----------------------------------------------------------------
-local ToggleInnocent = Tab:CreateToggle({
-    Name = "InnocentESP",
-    CurrentValue = false,
-    Flag = "Toggle1",
-    Callback = function(val)
-        innocentActive = val
-        if val then
-            startESPLoop()
-        else
-            stopESPLoopIfNeeded()
-        end
-    end,
-})
-
-local ToggleSheriff = Tab:CreateToggle({
-    Name = "SheriffESP",
-    CurrentValue = false,
-    Flag = "Toggle2",
-    Callback = function(val)
-        sheriffActive = val
-        if val then
-            startESPLoop()
-        else
-            stopESPLoopIfNeeded()
-        end
-    end,
-})
-
-local ToggleMurderer = Tab:CreateToggle({
-    Name = "MurdererESP",
-    CurrentValue = false,
-    Flag = "Toggle3",
-    Callback = function(val)
-        murdererActive = val
-        if val then
-            startESPLoop()
-        else
-            stopESPLoopIfNeeded()
-        end
-    end,
-})
-
-----------------------------------------------------------------
--- GunESP for GunDrops (update every 0.2 sec)
-----------------------------------------------------------------
-local ToggleGunESP = Tab:CreateToggle({
-    Name = "GunESP",
-    CurrentValue = false,
-    Flag = "Toggle5",
-    Callback = function(val)
-        gunESPActive = val
-        if val then
-            spawn(function()
-                while gunESPActive do
-                    for _, v in pairs(ws:GetDescendants()) do
-                        if v.Name == "GunDrop" and v:IsA("BasePart") then
-                            if not v:FindFirstChild("Highlight") then
-                                local h = Instance.new("Highlight", v)
-                                h.FillColor = Color3.new(0,0,1)
-                                h.Enabled = true
-                            end
-                        end
-                    end
-                    task.wait(0.2)
-                end
-            end)
-        else
-            for _, v in pairs(ws:GetDescendants()) do
-                if v.Name == "GunDrop" and v:IsA("BasePart") and v:FindFirstChild("Highlight") then
-                    v.Highlight:Destroy()
-                end
-            end
-        end
-    end,
-})
-
-----------------------------------------------------------------
--- Beta Auto Farm Coins using TweenService (Safe & Not Safe Methods)
--- Requires that "Coins Reach" is enabled.
-----------------------------------------------------------------
-local ToggleCoinsFarm = Auto:CreateToggle({
-    Name = "Beta Auto Farm Coins",
-    CurrentValue = false,
-    Flag = "Toggle4",
-    Callback = function(val)
-        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        if val then
-            if not coinsReachEnabled then
-                warn("Enable 'Coins Reach' first for Safe Auto Farm!")
-                return
-            end
-            ws.Gravity = 0
-            con4 = rs.Heartbeat:Connect(function()
-                local coin, dist = nil, math.huge
-                for _, v in pairs(ws:GetDescendants()) do
-                    if v.Name == "Coin_Server" and v:IsA("BasePart") then
-                        local d = (v.Position - hrp.Position).Magnitude
-                        if d < dist then
-                            dist = d
-                            coin = v
-                        end
-                    end
-                end
-                if coin and not tweenActive then
-                    tweenActive = true
-                    local dest, dur
-                    if coinFarmMethod == "Safe Method" then
-                        dest = coin.CFrame * CFrame.new(0, -3.5, 0)
-                        dur = math.min(dist / 22, 3.5)
-                    else -- Not Safe Method
-                        dest = coin.CFrame
-                        dur = 0.1
-                    end
-                    local tw = ts:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = dest})
-                    tw:Play()
-                    -- Minimal delay; no waiting for tween.Completed
-                    task.spawn(function()
-                        task.wait(0.05)
-                        tweenActive = false
-                    end)
-                end
-            end)
-        else
-            if con4 then con4:Disconnect() con4 = nil end
-            ws.Gravity = 187
-        end
-    end,
-})
-
-----------------------------------------------------------------
--- Chat Button: Send Murderer and Sheriff Names in Chat (Fixed)
-----------------------------------------------------------------
-local ChatButton = Auto:CreateButton({
-    Name = "Send Murderer and Sheriff In Chat",
-    Callback = function()
-        local mNames, sNames = {}, {}
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= lp and p.Character then
-                local isM = p.Character:FindFirstChild("Knife") or (p.Backpack and p.Backpack:FindFirstChild("Knife"))
-                local isS = p.Character:FindFirstChild("Gun") or (p.Backpack and p.Backpack:FindFirstChild("Gun"))
-                if isM then
-                    table.insert(mNames, p.Name)
-                elseif isS then
-                    table.insert(sNames, p.Name)
-                end
-            end
-        end
-        local mTxt = (#mNames > 0) and table.concat(mNames, ", ") or "None"
-        local sTxt = (#sNames > 0) and table.concat(sNames, ", ") or "None"
-        local msg = "Murderer: " .. mTxt .. " | Sheriff: " .. sTxt
-        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-        if remote and remote:FindFirstChild("SayMessageRequest") then
-            remote.SayMessageRequest:FireServer(msg, "All")
-        else
-            warn("Chat remote not found!")
-        end
-    end,
-})
-
-----------------------------------------------------------------
--- Auto Get Gun toggle (using GunDrop) (unchanged)
-----------------------------------------------------------------
-local Toggle6 = Auto:CreateToggle({
-    Name = "Auto Get Gun",
-    CurrentValue = false,
-    Flag = "Toggle6",
-    Callback = function(val)
-        if val then
-            autoGunLoop = rs.Heartbeat:Connect(function()
-                if autoGunBusy then return end
-                local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-                if not hrp then return end
-                local gun
-                for _, v in pairs(ws:GetDescendants()) do
-                    if v.Name == "GunDrop" and v:IsA("BasePart") then
-                        gun = v
-                        break
-                    end
-                end
-                if gun then
-                    autoGunBusy = true
-                    local oldC = hrp.CFrame
-                    local d = (hrp.Position - gun.Position).Magnitude
-                    local dur = d / 22
-                    local tw1 = ts:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = gun.CFrame})
-                    tw1:Play()
-                    tw1.Completed:Connect(function()
-                        wait(0.5)
-                        local tw2 = ts:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = oldC})
-                        tw2:Play()
-                        tw2.Completed:Connect(function()
-                            autoGunBusy = false
-                        end)
-                    end)
-                end
-            end)
-        else
-            if autoGunLoop then
-                autoGunLoop:Disconnect()
-                autoGunLoop = nil
-            end
-        end
-    end,
-})
-
-----------------------------------------------------------------
--- Coins Reach toggle: Increase coin size to 4x and restore original size when off
-----------------------------------------------------------------
-local Toggle7 = Auto:CreateToggle({
-    Name = "Coins Reach",
-    CurrentValue = false,
-    Flag = "Toggle7",
-    Callback = function(val)
-        if val then
-            coinsReachEnabled = true
-            for _, v in pairs(ws:GetDescendants()) do
-                if v.Name == "Coin_Server" and v:IsA("BasePart") then
-                    if not coinOrig[v] then coinOrig[v] = v.Size end
-                    v.Size = coinOrig[v] * 4
-                end
-            end
-            coinReachConn = ws.DescendantAdded:Connect(function(v)
-                if v.Name == "Coin_Server" and v:IsA("BasePart") then
-                    if not coinOrig[v] then coinOrig[v] = v.Size end
-                    v.Size = coinOrig[v] * 4
-                end
-            end)
-        else
-            coinsReachEnabled = false
-            for _, v in pairs(ws:GetDescendants()) do
-                if v.Name == "Coin_Server" and v:IsA("BasePart") and coinOrig[v] then
-                    v.Size = coinOrig[v]
-                    coinOrig[v] = nil
-                end
-            end
-            if coinReachConn then
-                coinReachConn:Disconnect()
-                coinReachConn = nil
-            end
-        end
-    end,
-})
-
-Rayfield:LoadConfiguration()
+game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer() 
+end)
+queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/TheHunterSolo1/Op-Ninja-Simulator-/Main/M1reset"))()')
