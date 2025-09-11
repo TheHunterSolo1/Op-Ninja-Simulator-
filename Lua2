@@ -31,7 +31,7 @@ LocalPlayer:SetAttribute("MoveLocation",true)
 end
 
 
-Door.Parent:SetAttribute("Opened",false)
+
 
 RunService.RenderStepped:Connect(function()
 if workspace.CurrentRooms:FindFirstChildOfClass("Model") then
