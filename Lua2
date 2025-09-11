@@ -35,7 +35,7 @@ end
 
 RunService.RenderStepped:Connect(function()
 if workspace.CurrentRooms:FindFirstChildOfClass("Model") then
-local Door = workspace.CurrentRooms["0"].Door.Door
+local Door = workspace.CurrentRooms[game.ReplicatedStorage.GameData.LatestRoom.Value].Door.Door
 Door.Parent:WaitForChild("ClientOpen"):FireServer()
 local Key = workspace:FindFirstChild("KeyObtain",true)
 
@@ -63,7 +63,7 @@ end
 end
 end
 end)
-task.wait(1)
+task.wait(3)
 LocalPlayer.Character.Humanoid.Died:Connect(function()
 
 game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer() 
