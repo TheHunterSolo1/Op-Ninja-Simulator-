@@ -63,6 +63,7 @@ end
 end
 end
 end)
+task.wait(1)
 LocalPlayer.Character.Humanoid.Died:Connect(function()
 
 game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer() 
