@@ -36,7 +36,7 @@ Door.Parent:SetAttribute("Opened",false)
 RunService.RenderStepped:Connect(function()
 if workspace.CurrentRooms:FindFirstChildOfClass("Model") then
 local Door = workspace.CurrentRooms["0"].Door.Door
-
+Door.Parent:WaitForChild("ClientOpen"):FireServer()
 local Key = workspace:FindFirstChild("KeyObtain",true)
 
 local Pos = Door.Position + Door.CFrame.LookVector * -4
