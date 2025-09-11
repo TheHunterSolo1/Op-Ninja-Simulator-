@@ -65,7 +65,7 @@ end
 end
 end
 end)
-LocalPlayer.Character.Humanoid.Died:Connect(function()
+task.wait(1)
 game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer() 
-end)
+
 queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/TheHunterSolo1/Op-Ninja-Simulator-/Main/M1reset"))()')
