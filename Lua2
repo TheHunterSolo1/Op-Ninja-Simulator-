@@ -20,7 +20,7 @@ end
 return
 end
 
-
+replicatesignal(game.Players.LocalPlayer.Kill)
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
