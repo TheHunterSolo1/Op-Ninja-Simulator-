@@ -20,7 +20,7 @@ end
 return
 end
 
-
+replicatesignal(game.Players.LocalPlayer.Kill)
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -65,8 +65,7 @@ end
 end
 end
 end)
-Door.Parent:GetAttributeChangedSignal("Opened"):Connect(function()
-
+LocalPlayer.Character.Humanoid.Died:Connect(function()
 game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer() 
 end)
 queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/TheHunterSolo1/Op-Ninja-Simulator-/Main/M1reset"))()')
