@@ -61,11 +61,12 @@ end
 
 if replicatesignal and Door.Parent:GetAttribute("Opened") then
 replicatesignal(LocalPlayer.Kill)
-end 
+end
+game:GetService("ReplicatedStorage").RemotesFolder.Statistics:FireServer()
 end
 end
 end)
-task.wait(1)
+task.wait(3)
 game.ReplicatedStorage.RemotesFolder.PlayAgain:FireServer() 
 
 queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/TheHunterSolo1/Op-Ninja-Simulator-/Main/M1reset"))()')
